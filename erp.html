@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise ERP &amp; HRMS | Kapate Consultancy</title>
+    
+    <!-- PWA & Mobile Web App Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#090d16">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kapate ERP">
+    <link rel="apple-touch-icon" href="assets/Kapate-Consultancy-Logo.png">
+
+    <!-- Google Fonts -->
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#090d16',
+                        darkCard: '#111726',
+                        darkBorder: '#1e293b',
+                        accentBlue: '#3b82f6',
+                        accentCyan: '#06b6d4',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #090d16;
+            color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #090d16; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+        /* ===== FULL PAGE LOGIN ===== */
+        #login-page {
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .login-left {
+            width: 45%;
+            background: linear-gradient(145deg, #060d1f 0%, #0a1628 40%, #0d1f3c 100%);
+            border-right: 1px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            top: -120px; left: -120px;
+            width: 480px; height: 480px;
+            background: radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .login-left::after {
+            content: '';
+            position: absolute;
+            bottom: -80px; right: -80px;
+            width: 320px; height: 320px;
+            background: radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .login-brand {
+            position: relative; z-index: 1;
+        }
+
+        .login-brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+        }
+
+        .login-brand-dot {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 18px; color: white;
+            box-shadow: 0 0 24px rgba(59,130,246,0.4);
+        }
+
+        .login-brand-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px; font-weight: 700; color: #f1f5f9;
+        }
+
+        .login-brand-name span { color: #60a5fa; }
+
+        .login-tagline {
+            font-size: 32px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            line-height: 1.2;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+        }
+
+        .login-tagline span {
+            background: linear-gradient(135deg, #60a5fa 0%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-desc {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.7;
+            max-width: 340px;
+        }
+
+        .login-features {
+            position: relative; z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 40px;
+        }
+
+        .login-feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .login-feature-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .login-footer-note {
+            position: relative; z-index: 1;
+            font-size: 11px;
+            color: #334155;
+        }
+
+        .login-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 32px;
+            background: #090d16;
+        }
+
+        .login-form-box {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-form-header {
+            margin-bottom: 32px;
+        }
+
+        .login-form-header h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 26px;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 6px;
+        }
+
+        .login-form-header p {
+            font-size: 13px;
+            color: #475569;
+        }
+
+        .auth-tabs {
+            display: flex;
+            background: #111726;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 28px;
+            gap: 4px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 7px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: #475569;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: #1e3a5f;
+            color: #60a5fa;
+            box-shadow: 0 0 14px rgba(59,130,246,0.15);
+        }
+
+        .auth-alert {
+            display: none;
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #fca5a5;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        .auth-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .auth-input {
+            width: 100%;
+            background: #111726;
+            border: 1px solid #1e293b;
+            color: #f1f5f9;
+            padding: 11px 14px;
+            border-radius: 9px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .auth-input:focus { border-color: #3b82f6; }
+
+        .auth-select {
+            width: 100%;
+            background: #111726;
+            border: 1px solid #1e293b;
+            color: #f1f5f9;
+            padding: 11px 14px;
+            border-radius: 9px;
+            font-size: 13px;
+            outline: none;
+            margin-bottom: 16px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .auth-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .auth-btn-primary {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 4px;
+        }
+
+        .auth-btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .auth-btn-primary:active { transform: translateY(0); }
+
+        .auth-back-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .auth-back-link a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .auth-back-link a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .login-left { display: none; }
+            .login-right { padding: 32px 20px; }
+        }
+
+        /* ===== OTP SCREEN ===== */
+        .otp-screen {
+            text-align: center;
+        }
+
+        .otp-icon-wrap {
+            width: 72px; height: 72px;
+            border-radius: 20px;
+            background: rgba(59,130,246,0.1);
+            border: 1px solid rgba(59,130,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+        }
+
+        .otp-input {
+            width: 100%;
+            background: #111726;
+            border: 1px solid #1e293b;
+            color: #f1f5f9;
+            padding: 16px;
+            border-radius: 9px;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 10px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+            margin: 20px 0;
+        }
+
+        .otp-input:focus { border-color: #3b82f6; }
+
+        .otp-helper {
+            display: none;
+            background: #0d1117;
+            border: 1px solid #1e293b;
+            border-radius: 7px;
+            padding: 10px;
+            font-size: 11px;
+            font-family: monospace;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+
+        .otp-helper span { color: #22d3ee; font-weight: 700; }
+
+        .otp-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .otp-btn-cancel {
+            flex: 1; padding: 12px;
+            border: 1px solid #1e293b;
+            color: #94a3b8; font-size: 13px;
+            border-radius: 9px; cursor: pointer;
+            background: transparent;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .otp-btn-cancel:hover { border-color: #475569; color: #f1f5f9; }
+
+        .otp-btn-verify {
+            flex: 2; padding: 12px;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            color: white; font-weight: 700; font-size: 13px;
+            border: none; border-radius: 9px; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .otp-btn-verify:hover { opacity: 0.9; }
+    </style>
+</head>
+<body class="font-sans min-h-screen overflow-x-hidden custom-scrollbar">
+
+    <!-- ===================== FULL-PAGE LOGIN ===================== -->
+    <div id="login-page" style="min-height:100vh;display:flex;">
+
+        <!-- LEFT BRANDING PANEL -->
+        <div class="login-left">
+            <div class="login-brand">
+                <div class="login-brand-logo">
+                    <div class="login-brand-dot">KC</div>
+                    <span class="login-brand-name">Kapate <span>ERP</span></span>
+                </div>
+                <h2 class="login-tagline">Your <span>Workforce.</span><br>Managed Smarter.</h2>
+                <p class="login-desc">A unified HRMS platform for Kapate Consultancy staff — manage attendance, payroll, tasks, and leaves from one secure portal.</p>
+
+                <div class="login-features">
+                    <div class="login-feature-item">
+                        <div class="login-feature-icon">⏱️</div>
+                        <span>Real-time attendance clock-in &amp; clock-out</span>
+                    </div>
+                    <div class="login-feature-item">
+                        <div class="login-feature-icon">💰</div>
+                        <span>Automated payroll &amp; digital payslip generation</span>
+                    </div>
+                    <div class="login-feature-item">
+                        <div class="login-feature-icon">📋</div>
+                        <span>Kanban task board with priority tracking</span>
+                    </div>
+                    <div class="login-feature-item">
+                        <div class="login-feature-icon">🌴</div>
+                        <span>Leave applications with manager approval flow</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-footer-note">
+                &copy; 2026 Kapate Consultancy &bull; Pune, Maharashtra, India &bull;
+                <a href="index.html" style="color:#334155;text-decoration:none;">Back to Website</a>
+            </div>
+        </div>
+
+        <!-- RIGHT AUTH PANEL -->
+        <div class="login-right">
+            <div class="login-form-box">
+
+                <!-- SIGN IN / SIGN UP Switcher -->
+                <div id="auth-main-screen">
+                    <div class="login-form-header">
+                        <h2 id="auth-form-heading">Welcome back</h2>
+                        <p id="auth-form-subheading">Sign in to your Kapate ERP account to continue.</p>
+                    </div>
+
+                    <div class="auth-alert" id="login-alert"></div>
+
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" id="tab-btn-login">Sign In</button>
+                        <button class="auth-tab" id="tab-btn-register">Create Account</button>
+                    </div>
+
+                    <!-- LOGIN FORM -->
+                    <form id="auth-login-form">
+                        <label class="auth-label">Registered Email</label>
+                        <input type="email" id="li-email" class="auth-input" placeholder="rahul@kapate.in" required>
+
+                        <label class="auth-label">Mobile Number (for OTP)</label>
+                        <input type="tel" id="li-phone" class="auth-input" placeholder="+91 98765 43210" required>
+
+                        <button type="submit" class="auth-btn-primary">Send Verification Code &rarr;</button>
+                    </form>
+
+                    <!-- REGISTRATION FORM -->
+                    <form id="auth-register-form" style="display:none;">
+                        <div class="auth-row">
+                            <div>
+                                <label class="auth-label">Full Name</label>
+                                <input type="text" id="rg-name" class="auth-input" placeholder="Rahul Sharma" required>
+                            </div>
+                            <div>
+                                <label class="auth-label">Email Address</label>
+                                <input type="email" id="rg-email" class="auth-input" placeholder="rahul@kapate.in" required>
+                            </div>
+                        </div>
+
+                        <div class="auth-row">
+                            <div>
+                                <label class="auth-label">Mobile Number</label>
+                                <input type="tel" id="rg-phone" class="auth-input" placeholder="+91 98765 43210" required>
+                            </div>
+                            <div>
+                                <label class="auth-label">Target Role</label>
+                                <select id="rg-role" class="auth-select">
+                                    <option value="Developer">Developer</option>
+                                    <option value="Intern">Intern</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <label class="auth-label">Department</label>
+                        <input type="text" id="rg-dept" class="auth-input" value="Engineering" required>
+
+                        <button type="submit" class="auth-btn-primary">Send Verification Code &rarr;</button>
+                    </form>
+
+                    <div class="auth-back-link">
+                        <a href="index.html">&larr; Back to main website</a>
+                    </div>
+                </div>
+
+                <!-- OTP SCREEN -->
+                <div id="auth-otp-screen" style="display:none;" class="otp-screen">
+                    <div class="otp-icon-wrap">🔐</div>
+                    <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:8px;">Check Your Phone &amp; Email</h2>
+                    <p style="font-size:13px;color:#475569;line-height:1.6;">We've sent a 6-digit security code to your registered email and mobile. Enter it below to verify your identity.</p>
+
+                    <div class="auth-alert" id="otp-alert"></div>
+
+
+
+                    <div id="otp-email-status" style="font-size:11px;color:#94a3b8;margin-bottom:10px;"></div>
+
+                    <input type="text" id="otp-input-code" class="otp-input" placeholder="000000" maxlength="6">
+
+                    <div class="otp-btn-row">
+                        <button class="otp-btn-cancel" onclick="closeOtp()">Cancel</button>
+                        <button class="otp-btn-verify" id="verify-otp-btn">Verify &amp; Enter Portal</button>
+                    </div>
+
+                    <div class="auth-back-link" style="margin-top:16px;">
+                        Didn't receive it? <a href="#" onclick="closeOtp();return false;">Try again</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== ERP PORTAL LAYOUT ===================== -->
+    <div id="erp-layout" class="hidden flex min-h-screen relative">
+        
+        <!-- SIDEBAR BACKDROP OVERLAY (Mobile) -->
+        <div id="erp-sidebar-overlay" class="fixed inset-0 bg-black/70 z-40 hidden backdrop-blur-sm transition-opacity duration-300"></div>
+
+        <!-- SIDEBAR -->
+        <aside id="erp-sidebar" class="w-64 bg-darkCard border-r border-darkBorder flex flex-col fixed top-0 bottom-0 left-0 z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="p-6 border-b border-darkBorder flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-accentBlue to-accentCyan flex items-center justify-center font-bold font-outfit text-white text-lg shadow-lg">KC</div>
+                    <span class="font-outfit font-bold text-lg text-white">Kapate <span class="text-accentBlue">ERP</span></span>
+                </div>
+                <button id="mobile-erp-sidebar-close" class="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition" aria-label="Close Navigation Menu">
+                    ✕
+                </button>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">Core HRMS</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer active bg-accentBlue text-white shadow-md shadow-accentBlue/20" data-tab="tab-dashboard">
+                    <span>🏡</span> Dashboard
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-employees">
+                    <span>👥</span> Employee Directory
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-payroll">
+                    <span>💰</span> Payroll &amp; Payslips
+                </a>
+
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Operations</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-attendance">
+                    <span>⏱️</span> Attendance Clock
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-leaves">
+                    <span>🌴</span> Leave Portal
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-tasks">
+                    <span>📋</span> Task Kanban
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-recruitments">
+                    <span>👨‍💼</span> HR Recruitment
+                </a>
+
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Finance &amp; Company</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-finance">
+                    <span>💼</span> Finance Ledger
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-darkBorder flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-accentBlue text-white font-bold flex items-center justify-center text-xs" id="user-initials">SK</div>
+                    <div class="text-left">
+                        <div class="text-xs font-bold text-white" id="user-display-name">Shon Kapate</div>
+                        <div class="text-[10px] text-slate-400" id="user-display-role">Admin</div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="p-2 text-slate-400 hover:text-white transition">
+                    🚪
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT WRAPPER -->
+        <main class="ml-0 lg:ml-64 flex-1 flex flex-col min-h-screen w-full min-w-0">
+            <!-- TOP BAR -->
+            <header class="h-16 bg-darkCard border-b border-darkBorder px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button id="mobile-erp-sidebar-toggle" class="lg:hidden p-2 rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-darkBorder focus:outline-none" aria-label="Toggle Navigation Menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h2 class="font-outfit font-bold text-base sm:text-lg text-white truncate" id="erp-tab-title">ERP Control Center</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex items-center gap-2 text-xs bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        HQ Server Sync
+                    </div>
+                </div>
+            </header>
+
+            <!-- VIEW CONTAINER -->
+            <div class="p-4 sm:p-6 lg:p-8 flex-1">
+
+
+                <!-- 1. DASHBOARD PORTAL -->
+                <section id="tab-dashboard" class="tab-view block space-y-8">
+                    <!-- Stat Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Total Staff</div>
+                            <div class="text-3xl font-bold font-outfit" id="dash-staff-count">4</div>
+                            <div class="text-[11px] text-slate-500 mt-1">Departments: Tech, Executive, HR</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Project Tasks</div>
+                            <div class="text-3xl font-bold font-outfit" id="dash-tasks-count">4</div>
+                            <div class="text-[11px] text-blue-400 mt-1">Pending QA / Completion</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Pending Leaves</div>
+                            <div class="text-3xl font-bold font-outfit" id="dash-leaves-count">0</div>
+                            <div class="text-[11px] text-amber-400 mt-1">Require Manager Approval</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Finance P&amp;L</div>
+                            <div class="text-3xl font-bold font-outfit text-emerald-400" id="dash-net-profit">₹2,66,000</div>
+                            <div class="text-[11px] text-slate-500 mt-1">Net Corporate Cashflow</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Clock-In Panel & Holiday Calendar -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Daily Attendance Card -->
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl">
+                            <h3 class="font-outfit font-bold text-base text-white mb-4">Daily Attendance Clock</h3>
+                            <div class="flex items-center justify-between p-4 bg-slate-900/60 border border-darkBorder rounded-lg mb-6">
+                                <div>
+                                    <div class="text-xs text-slate-400 font-medium">Duty Status</div>
+                                    <div class="text-lg font-bold text-white mt-0.5" id="attendance-status">Not Logged In</div>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button onclick="triggerClock('check_in')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition">Clock In</button>
+                                    <button onclick="triggerClock('check_out')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition">Clock Out</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Summary -->
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl">
+                            <h3 class="font-outfit font-bold text-base text-white mb-4">Leave Application &amp; Policy</h3>
+                            <form id="apply-leave-form" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 font-semibold mb-1">Leave Type</label>
+                                        <select id="leave-type" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs">
+                                            <option value="Sick">Sick Leave</option>
+                                            <option value="Casual">Casual Leave</option>
+                                            <option value="Paid">Paid Annual</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 font-semibold mb-1">Employee ID</label>
+                                        <input type="text" id="leave-emp-id" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs" placeholder="e.g. KC-EMP-103" required>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 font-semibold mb-1">Start Date</label>
+                                        <input type="date" id="leave-start" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 font-semibold mb-1">End Date</label>
+                                        <input type="date" id="leave-end" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 font-semibold mb-1">Reason</label>
+                                    <input type="text" id="leave-reason" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs" placeholder="e.g. Medical Checkup" required>
+                                </div>
+                                <button type="submit" class="w-full py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">Submit Leave Request</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. EMPLOYEE DIRECTORY -->
+                <section id="tab-employees" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Corporate Staff Directory</h3>
+                        <button onclick="toggleEmployeeModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Register Employee</button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Emp ID</th>
+                                    <th class="p-4">Name</th>
+                                    <th class="p-4">Contact Email</th>
+                                    <th class="p-4">Department &amp; Role</th>
+                                    <th class="p-4">Type</th>
+                                    <th class="p-4">Basic Pay (₹)</th>
+                                    <th class="p-4">Performance KPI</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 3. PAYROLL SYSTEM -->
+                <section id="tab-payroll" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Salary Disbursements Ledger</h3>
+                        <div class="flex gap-3">
+                            <input type="text" id="payroll-month-input" class="bg-slate-900 border border-darkBorder text-white px-3 py-1.5 rounded-lg text-xs focus:outline-none" placeholder="e.g. 2026-08">
+                            <button onclick="generatePayroll()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition">Generate Payroll Cycle</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Emp ID</th>
+                                    <th class="p-4">Staff Name</th>
+                                    <th class="p-4">Month</th>
+                                    <th class="p-4">Basic (₹)</th>
+                                    <th class="p-4">Allowances (₹)</th>
+                                    <th class="p-4">Deductions (₹)</th>
+                                    <th class="p-4">Net Salary (₹)</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Payslip</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payroll-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. ATTENDANCE LOGS -->
+                <section id="tab-attendance" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Staff Duty Logs &amp; Analytics</h3>
+                        <button onclick="handleClockInOut()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition">⏱️ Clock In / Check Out</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Table (Left 2 columns) -->
+                        <div class="lg:col-span-2 bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                            <table class="w-full border-collapse text-left text-sm">
+                                <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4">Emp ID</th>
+                                        <th class="p-4">Duty Date</th>
+                                        <th class="p-4">Check In</th>
+                                        <th class="p-4">Check Out</th>
+                                        <th class="p-4">Duty Hours</th>
+                                        <th class="p-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Chart (Right 1 column) -->
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl flex flex-col justify-center">
+                            <h4 class="font-outfit font-bold text-xs text-slate-400 uppercase mb-4 tracking-wider">Duty Hours Distribution</h4>
+                            <div class="relative h-64">
+                                <canvas id="attendance-hours-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. LEAVE MANAGEMENT -->
+                <section id="tab-leaves" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Leave Applications Moderation</h3>
+                        <button onclick="toggleLeaveModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Apply for Leave</button>
+                    </div>
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Emp ID</th>
+                                    <th class="p-4">Leave Type</th>
+                                    <th class="p-4">Start Date</th>
+                                    <th class="p-4">End Date</th>
+                                    <th class="p-4">Reason</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaves-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 6. TASK KANBAN -->
+                <section id="tab-tasks" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Developer &amp; Intern Tasks</h3>
+                        <button onclick="toggleTaskModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Create Task</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <!-- To Do -->
+                        <div class="bg-darkCard border border-darkBorder p-4 rounded-xl">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">To Do</h4>
+                            <div id="task-col-todo" class="space-y-3 min-h-[300px]"></div>
+                        </div>
+                        <!-- In Progress -->
+                        <div class="bg-darkCard border border-darkBorder p-4 rounded-xl">
+                            <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-4">In Progress</h4>
+                            <div id="task-col-progress" class="space-y-3 min-h-[300px]"></div>
+                        </div>
+                        <!-- QA / Review -->
+                        <div class="bg-darkCard border border-darkBorder p-4 rounded-xl">
+                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">QA &amp; Review</h4>
+                            <div id="task-col-qa" class="space-y-3 min-h-[300px]"></div>
+                        </div>
+                        <!-- Done -->
+                        <div class="bg-darkCard border border-darkBorder p-4 rounded-xl">
+                            <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-4">Done</h4>
+                            <div id="task-col-done" class="space-y-3 min-h-[300px]"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. RECRUITMENT -->
+                <section id="tab-recruitments" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">HR Recruitment Funnel</h3>
+                        <button onclick="toggleRecModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Add Applicant</button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Candidate Name</th>
+                                    <th class="p-4">Email</th>
+                                    <th class="p-4">Target Role</th>
+                                    <th class="p-4">HR Score</th>
+                                    <th class="p-4">Recruitment Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recruitments-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 8. FINANCE LEDGER -->
+                <section id="tab-finance" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-base">Expense &amp; Net Ledger</h3>
+                        <button onclick="toggleExpenseModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Log Corporate Expense</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Company Expense Volume</div>
+                            <div class="text-2xl font-bold font-outfit text-red-400" id="fin-expenses">₹0</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Company Revenue Volume</div>
+                            <div class="text-2xl font-bold font-outfit text-emerald-400" id="fin-revenue">₹0</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Adjusted Profit Margin</div>
+                            <div class="text-2xl font-bold font-outfit text-white" id="fin-profit">₹0</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Expense Title</th>
+                                    <th class="p-4">Category</th>
+                                    <th class="p-4">Amount (₹)</th>
+                                    <th class="p-4">Payment Date</th>
+                                    <th class="p-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ===================== MODAL: REGISTER EMPLOYEE ===================== -->
+    <div id="emp-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-outfit font-bold text-white text-base">Register Employee Profile</h4>
+                <button onclick="toggleEmployeeModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="add-employee-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Full Name</label>
+                        <input type="text" id="emp-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Email Address</label>
+                        <input type="email" id="emp-email" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Department</label>
+                        <input type="text" id="emp-dept" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="Engineering" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Job Role</label>
+                        <select id="emp-role" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
+                            <option value="Developer">Developer</option>
+                            <option value="Manager">Manager</option>
+                            <option value="HR">HR</option>
+                            <option value="Intern">Intern</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Employment Type</label>
+                        <select id="emp-type" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
+                            <option value="Full-time">Full-time</option>
+                            <option value="Intern">Intern</option>
+                            <option value="Contract">Contract</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Basic Pay (₹)</label>
+                        <input type="number" id="emp-pay" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="45000" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="toggleEmployeeModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: CREATE TASK ===================== -->
+    <div id="task-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-outfit font-bold text-white text-base">Assign Task</h4>
+                <button onclick="toggleTaskModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-task-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Task Title</label>
+                    <input type="text" id="task-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" placeholder="e.g. Design Dashboard Prototypes" required>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Assigned To (Emp ID)</label>
+                    <input type="text" id="task-assignee" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" placeholder="e.g. KC-EMP-103" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Priority</label>
+                        <select id="task-priority" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Deadline Date</label>
+                        <input type="date" id="task-deadline" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="toggleTaskModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: EXPENSE ===================== -->
+    <div id="expense-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-outfit font-bold text-white text-base">Log Corporate Expense</h4>
+                <button onclick="toggleExpenseModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-expense-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Expense Title</label>
+                    <input type="text" id="exp-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Category</label>
+                        <select id="exp-cat" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs">
+                            <option value="Operations">Operations</option>
+                            <option value="Software">Software licenses</option>
+                            <option value="Travel">Travel &amp; Transport</option>
+                            <option value="Other">Other Expenses</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Amount (₹)</label>
+                        <input type="number" id="exp-amount" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="toggleExpenseModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Log Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: RECRUITMENT ===================== -->
+    <div id="rec-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-outfit font-bold text-white text-base">Add Candidate to Funnel</h4>
+                <button onclick="toggleRecModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-rec-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Candidate Name</label>
+                    <input type="text" id="rec-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Email Address</label>
+                    <input type="email" id="rec-email" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Role Applied</label>
+                        <input type="text" id="rec-role" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="Developer Intern" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">HR Screening Score (0-100)</label>
+                        <input type="number" id="rec-score" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="75" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="toggleRecModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Add Candidate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: PAYSLIP PREVIEW ===================== -->
+    <div id="payslip-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-white text-slate-800 w-full max-w-2xl p-8 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <!-- Close & Print buttons -->
+            <div class="flex justify-between items-center mb-6 no-print">
+                <h4 class="font-outfit font-bold text-lg text-slate-900">Official Salary Payslip</h4>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="px-4 py-1.5 bg-accentBlue text-white font-semibold text-xs rounded-lg shadow hover:bg-blue-600">Print / PDF</button>
+                    <button onclick="togglePayslipModal(false)" class="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs rounded-lg">Close</button>
+                </div>
+            </div>
+
+            <!-- Letterhead Layout -->
+            <div id="payslip-print-content" class="p-6 border border-slate-200 rounded-xl space-y-6 bg-white">
+                <div class="flex justify-between items-start border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="font-outfit font-extrabold text-xl text-slate-900 tracking-tight">KAPATE CONSULTANCY</h2>
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-0.5">Corporate HQ · Engineering Solutions</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Pune, Maharashtra, India | office.kapateconsultancy@gmail.com</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-3 py-1 bg-blue-50 text-accentBlue font-bold text-[10px] rounded uppercase">Confidential Payslip</span>
+                        <p class="text-[11px] text-slate-500 mt-2 font-mono" id="ps-ref-id">REF: KC-PS-902341</p>
+                    </div>
+                </div>
+
+                <!-- Employee & Cycle Details -->
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Employee Name</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="ps-emp-name">Rahul Sharma</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Employee ID</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="ps-emp-id">KC-EMP-103</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Disbursement Period</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="ps-period">August 2026</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Payment Status</div>
+                        <div class="font-bold text-emerald-600 mt-0.5">Paid (Online Bank Transfer)</div>
+                    </div>
+                </div>
+
+                <!-- Salary Computations -->
+                <table class="w-full text-xs text-left border-t border-slate-100 mt-4">
+                    <thead>
+                        <tr class="bg-slate-50 text-[10px] uppercase text-slate-500 font-bold border-b border-slate-200">
+                            <th class="p-3">Earnings &amp; Allowances</th>
+                            <th class="p-3 text-right">Amount (INR)</th>
+                            <th class="p-3">Deductions</th>
+                            <th class="p-3 text-right">Amount (INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td class="p-3 font-semibold">Basic Retainer Fee</td>
+                            <td class="p-3 text-right font-mono" id="ps-basic">₹35,000</td>
+                            <td class="p-3">Provident Fund Retainage</td>
+                            <td class="p-3 text-right font-mono" id="ps-ded-pf">₹500</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3">Travel &amp; Project Allowance</td>
+                            <td class="p-3 text-right font-mono" id="ps-allow-travel">₹3,000</td>
+                            <td class="p-3">Professional Duty Tax</td>
+                            <td class="p-3 text-right font-mono" id="ps-ded-tax">₹500</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3">Client Deliverable Bonus</td>
+                            <td class="p-3 text-right font-mono" id="ps-allow-bonus">₹2,000</td>
+                            <td class="p-3">Other Adjustments</td>
+                            <td class="p-3 text-right font-mono" id="ps-ded-other">₹0</td>
+                        </tr>
+                        <tr class="bg-blue-50/50 font-bold text-slate-900 border-t border-slate-200">
+                            <td class="p-3 uppercase text-[10px]">Total Allowances</td>
+                            <td class="p-3 text-right font-mono" id="ps-total-allow">₹5,000</td>
+                            <td class="p-3 uppercase text-[10px]">Total Deductions</td>
+                            <td class="p-3 text-right font-mono" id="ps-total-ded">₹1,000</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Net Payout -->
+                <div class="flex justify-between items-center p-4 bg-blue-50 border border-blue-100 rounded-xl mt-4">
+                    <div>
+                        <div class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Net Take-Home Salary</div>
+                        <div class="text-xs text-slate-500 font-mono italic">(In words: <span id="ps-net-words">Thirty-Nine Thousand Rupees Only</span>)</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xl font-black font-outfit text-accentBlue" id="ps-net-salary">₹39,000</div>
+                    </div>
+                </div>
+
+                <!-- Footer & Corporate Seal -->
+                <div class="flex justify-between items-end pt-6 border-t border-slate-100 text-[10px] text-slate-400 mt-6">
+                    <div>
+                        <p>This is a system-generated payslip matching active ERP ledger accounts.</p>
+                        <p class="font-mono">IP Timestamp: 127.0.0.1 (Self Authenticated)</p>
+                    </div>
+                    <div class="text-center no-print">
+                        <div class="w-20 h-10 border-b border-dashed border-slate-300 mx-auto flex items-end justify-center pb-1 font-mono text-[9px] text-slate-400">Shon Kapate</div>
+                        <p class="font-bold text-slate-600 mt-1 uppercase text-[8px] tracking-widest">Authorized Signatory</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: KANBAN CHECKLIST ===================== -->
+    <div id="checklist-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <div>
+                    <h4 class="font-outfit font-bold text-white text-base" id="cl-task-title">Task Details</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Assigned to: <strong id="cl-task-assignee">Shon Kapate</strong></p>
+                </div>
+                <button onclick="toggleChecklistModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <!-- Subtask Checklist Builder -->
+            <div class="space-y-3">
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Subtask Checklist</label>
+                <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar" id="cl-items-container">
+                    <!-- Dynamic checkbox checklist items -->
+                </div>
+
+                <!-- Input to add item -->
+                <div class="flex gap-2 pt-2 border-t border-darkBorder/40">
+                    <input type="text" id="cl-new-item-input" class="flex-1 bg-slate-900 border border-darkBorder text-slate-300 px-3 py-1.5 rounded-lg text-xs" placeholder="Add new checklist task...">
+                    <button onclick="addChecklistItem()" class="px-3 py-1.5 bg-accentBlue text-white font-semibold text-xs rounded-lg">Add</button>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-darkBorder/40">
+                <button onclick="toggleChecklistModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                <button onclick="saveChecklist()" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg shadow-md">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: APPLY FOR LEAVE ===================== -->
+    <div id="leave-apply-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <h4 class="font-outfit font-bold text-white text-base">Submit Leave Application</h4>
+                <button onclick="toggleLeaveModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <form id="leave-apply-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Leave Category</label>
+                    <select id="leave-type-input" class="w-full bg-slate-900 border border-darkBorder text-slate-300 px-3 py-2 rounded-lg text-xs outline-none">
+                        <option value="Casual">Casual Leave (CL)</option>
+                        <option value="Paid">Paid Leave (PL)</option>
+                        <option value="Sick">Sick Leave (SL)</option>
+                        <option value="Unpaid">Unpaid Leave</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Start Date</label>
+                        <input type="date" id="leave-start-input" class="w-full bg-slate-900 border border-darkBorder text-slate-300 px-3 py-2 rounded-lg text-xs outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">End Date</label>
+                        <input type="date" id="leave-end-input" class="w-full bg-slate-900 border border-darkBorder text-slate-300 px-3 py-2 rounded-lg text-xs outline-none" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Reason / Notes</label>
+                    <textarea id="leave-reason-input" rows="3" class="w-full bg-slate-900 border border-darkBorder text-slate-300 px-3 py-2 rounded-lg text-xs outline-none" placeholder="State the reason for leave..." required></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-darkBorder/40">
+                    <button type="button" onclick="toggleLeaveModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg shadow-md">Submit Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print styling overrides -->
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #payslip-modal, #payslip-modal * {
+                visibility: visible;
+            }
+            #payslip-modal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                color: black;
+                padding: 0;
+                margin: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+
+    <!-- Script Resource -->
+    <script src="erp.js"></script>
+</body>
+</html>

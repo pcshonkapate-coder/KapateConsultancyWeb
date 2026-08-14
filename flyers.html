@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kapate Consultancy | Social Media Flyer Generator & Brand Kit</title>
+
+  <!-- SEO -->
+  <meta name="description" content="Official Social Media Flyers and Promotional Graphics for Kapate Consultancy for Instagram, LinkedIn, Facebook, and Corporate Marketing.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/Kapate-Consultancy-Logo.png">
+
+  <!-- HTML2Canvas CDN for single-click image download -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: #111827;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --cyan-glow: #06b6d4;
+      --blue-glow: #3b82f6;
+      --purple-glow: #8b5cf6;
+      --gold-glow: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Nav Header */
+    .top-header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #ffffff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-accent {
+      background: linear-gradient(135deg, var(--cyan-glow), var(--blue-glow));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan-glow), var(--blue-glow));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Container Layout */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      width: 100%;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      font-size: 1rem;
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: var(--cyan-glow);
+      color: var(--cyan-glow);
+    }
+
+    /* Studio Layout Grid */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .studio-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Sidebar Form Controls */
+    .controls-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--cyan-glow);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* Preset Selection Buttons */
+    .preset-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .preset-pill.active, .preset-pill:hover {
+      background: var(--cyan-glow);
+      color: #000;
+      border-color: var(--cyan-glow);
+      font-weight: 600;
+    }
+
+    /* Preview Workspace */
+    .preview-workspace {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .canvas-container {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    /* Flyer Design Template (Live HTML Canvas) */
+    .flyer-template {
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle at 10% 20%, #0f172a 0%, #040711 100%);
+      color: #fff;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Aspect Ratio Modes */
+    .flyer-template.aspect-instagram {
+      width: 600px;
+      height: 600px; /* 1:1 */
+    }
+
+    .flyer-template.aspect-linkedin {
+      width: 680px;
+      height: 380px; /* 16:9 Landscape */
+    }
+
+    .flyer-template.aspect-facebook {
+      width: 650px;
+      height: 520px; /* 5:4 */
+    }
+
+    /* Background Effects */
+    .flyer-glow-1 {
+      position: absolute;
+      top: -80px;
+      right: -80px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .flyer-glow-2 {
+      position: absolute;
+      bottom: -100px;
+      left: -60px;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Flyer Internal Layout */
+    .flyer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+    }
+
+    .flyer-logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flyer-logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--cyan-glow), var(--blue-glow));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .flyer-brand-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .flyer-target-tag {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cyan-glow);
+    }
+
+    .flyer-body {
+      z-index: 2;
+      margin: 20px 0;
+    }
+
+    .flyer-headline {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .flyer-subheadline {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      max-width: 90%;
+    }
+
+    .flyer-services-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .flyer-service-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flyer-service-pill svg {
+      color: var(--cyan-glow);
+    }
+
+    .flyer-footer {
+      z-index: 2;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .flyer-contact-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.8rem;
+    }
+
+    .flyer-contact-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+
+    .flyer-cta-btn {
+      background: linear-gradient(135deg, var(--cyan-glow), var(--blue-glow));
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: none;
+    }
+
+    /* Social Post Copy Section */
+    .caption-box {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .caption-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .caption-content {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: monospace;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    /* AI Generated Art Gallery */
+    .art-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .art-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .art-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
+    .art-card-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .art-card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .art-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="top-header">
+    <a href="index.html" class="brand-logo">
+      <span>Kapate <span class="brand-accent">Consultancy</span></span>
+    </a>
+    <div class="header-actions">
+      <a href="index.html" class="btn btn-outline">Back to Website</a>
+      <a href="erp.html" class="btn btn-outline">ERP Portal</a>
+      <button onclick="downloadFlyerPNG()" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Flyer
+      </button>
+    </div>
+  </header>
+
+  <main class="app-container">
+
+    <h1 class="section-title">Social Media Flyer & Marketing Suite</h1>
+    <p class="section-subtitle">Multi-platform flyer graphics designed for Instagram, LinkedIn, Facebook, clients, and corporate partner firms.</p>
+
+    <!-- Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('studio')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Interactive Flyer Studio
+      </button>
+      <button class="tab-btn" onclick="switchTab('gallery')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        AI Generated Artwork Flyers
+      </button>
+    </div>
+
+    <!-- Tab 1: Interactive Flyer Studio -->
+    <div id="tab-studio" class="studio-grid">
+
+      <!-- Left Controls -->
+      <div class="controls-card">
+        <h3 style="font-family:'Outfit'; font-size:1.1rem; color:var(--cyan-glow);">Customize Design</h3>
+
+        <div class="form-group">
+          <label>Target Audience / Preset</label>
+          <div class="preset-pills">
+            <span class="preset-pill active" onclick="applyPreset('corporate')">Corporate Firms</span>
+            <span class="preset-pill" onclick="applyPreset('customers')">Direct Clients</span>
+            <span class="preset-pill" onclick="applyPreset('academic')">Academic / Students</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Social Platform Ratio</label>
+          <select id="platform-ratio" class="form-select" onchange="updateAspectRatio()">
+            <option value="instagram">Instagram Post (1:1 Square)</option>
+            <option value="linkedin">LinkedIn B2B (16:9 Banner)</option>
+            <option value="facebook">Facebook Feed (5:4 Portrait)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Audience Badge Tag</label>
+          <input type="text" id="input-tag" class="form-input" value="For Enterprise & Firms" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Main Headline</label>
+          <textarea id="input-headline" class="form-textarea" oninput="renderFlyer()">Accelerate Enterprise Growth with Next-Gen Tech</textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Subheadline / Tagline</label>
+          <textarea id="input-subheadline" class="form-textarea" oninput="renderFlyer()">Custom Software Engineering, Modern ERP Platforms, and AI Integration Tailored for Modern Businesses.</textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Service Highlight 1</label>
+          <input type="text" id="input-s1" class="form-input" value="⚡ Enterprise ERP & HRMS" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Service Highlight 2</label>
+          <input type="text" id="input-s2" class="form-input" value="🤖 AI & Machine Learning" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Service Highlight 3</label>
+          <input type="text" id="input-s3" class="form-input" value="🌐 Web & Mobile Apps" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Service Highlight 4</label>
+          <input type="text" id="input-s4" class="form-input" value="☁️ Cloud & Cyber Security" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Call to Action Button</label>
+          <input type="text" id="input-cta" class="form-input" value="Get Free Consultation" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="text" id="input-phone" class="form-input" value="+91-8421174957" oninput="renderFlyer()">
+        </div>
+
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="text" id="input-email" class="form-input" value="office.kapateconsultancy@gmail.com" oninput="renderFlyer()">
+        </div>
+      </div>
+
+      <!-- Right Workspace Canvas & Caption -->
+      <div class="preview-workspace">
+
+        <!-- Live Flyer Canvas Container -->
+        <div class="canvas-container">
+          <div id="flyer-canvas" class="flyer-template aspect-instagram">
+            <div class="flyer-glow-1"></div>
+            <div class="flyer-glow-2"></div>
+
+            <!-- Header -->
+            <div class="flyer-header">
+              <div class="flyer-logo-badge">
+                <div class="flyer-logo-icon">KC</div>
+                <div>
+                  <div class="flyer-brand-name">Kapate Consultancy</div>
+                  <div style="font-size:0.7rem; color:#06b6d4;">Pune, India</div>
+                </div>
+              </div>
+              <div id="flyer-tag" class="flyer-target-tag">For Enterprise & Firms</div>
+            </div>
+
+            <!-- Body -->
+            <div class="flyer-body">
+              <h2 id="flyer-headline" class="flyer-headline">Accelerate Enterprise Growth with Next-Gen Tech</h2>
+              <p id="flyer-subheadline" class="flyer-subheadline">Custom Software Engineering, Modern ERP Platforms, and AI Integration Tailored for Modern Businesses.</p>
+
+              <div class="flyer-services-grid">
+                <div id="flyer-s1" class="flyer-service-pill">⚡ Enterprise ERP & HRMS</div>
+                <div id="flyer-s2" class="flyer-service-pill">🤖 AI & Machine Learning</div>
+                <div id="flyer-s3" class="flyer-service-pill">🌐 Web & Mobile Apps</div>
+                <div id="flyer-s4" class="flyer-service-pill">☁️ Cloud & Cyber Security</div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flyer-footer">
+              <div class="flyer-contact-col">
+                <div class="flyer-contact-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span id="flyer-phone">+91-8421174957</span>
+                </div>
+                <div class="flyer-contact-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <span id="flyer-email">office.kapateconsultancy@gmail.com</span>
+                </div>
+              </div>
+
+              <button id="flyer-cta" class="flyer-cta-btn">Get Free Consultation</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Social Post Ready Caption & Hashtags -->
+        <div class="caption-box">
+          <div class="caption-header">
+            <h4 style="font-family:'Outfit';">Ready Social Media Caption & Hashtags</h4>
+            <button onclick="copyCaption()" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy Caption
+            </button>
+          </div>
+          <div id="caption-text" class="caption-content">🚀 Transform & Scale Your Enterprise with Kapate Consultancy!
+
+Are manual workflows or outdated software holding your business back? At Kapate Consultancy (Pune, India), we design high-impact digital solutions built for enterprise growth.
+
+✨ Our Core Services:
+• Enterprise ERP & HRMS Solutions
+• Custom Web & Mobile Application Development
+• AI, Predictive Analytics & Machine Learning
+• Cloud Deployment, Security & DevOps
+• Final-Year B.Tech/M.Tech Academic Project Support
+
+💼 Partner with a trusted team of engineers to build software that drives real results.
+
+📲 Contact Us Today:
+📞 Call / WhatsApp: +91-8421174957
+✉️ Email: office.kapateconsultancy@gmail.com
+🌐 Web: kapateconsultancy.in
+
+#KapateConsultancy #ITConsultancy #SoftwareDevelopment #ERP #HRMS #ArtificialIntelligence #CloudSolutions #TechPune #B2BSoftware #EngineeringProjects</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Tab 2: AI Generated Artwork Gallery -->
+    <div id="tab-gallery" class="art-gallery" style="display: none;">
+      <div class="art-card">
+        <img src="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_instagram_1786137587446.png" alt="Instagram Flyer">
+        <div class="art-card-body">
+          <div class="art-card-title">Instagram Post Flyer (1:1 Square)</div>
+          <div class="art-card-desc">Vibrant dark neon tech design optimized for Instagram feeds, showcasing services & consultation CTA.</div>
+          <a href="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_instagram_1786137587446.png" download="Kapate_Instagram_Flyer.png" class="btn btn-primary">Download Image</a>
+        </div>
+      </div>
+
+      <div class="art-card">
+        <img src="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_linkedin_1786137599301.png" alt="LinkedIn Flyer">
+        <div class="art-card-body">
+          <div class="art-card-title">LinkedIn B2B Flyer (16:9 Banner)</div>
+          <div class="art-card-desc">Executive navy & gold corporate flyer tailored for enterprise firms, B2B partners, and decision-makers.</div>
+          <a href="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_linkedin_1786137599301.png" download="Kapate_LinkedIn_Flyer.png" class="btn btn-primary">Download Image</a>
+        </div>
+      </div>
+
+      <div class="art-card">
+        <img src="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_facebook_1786137611025.png" alt="Facebook Flyer">
+        <div class="art-card-body">
+          <div class="art-card-title">Facebook Promo Flyer (5:4 Feed)</div>
+          <div class="art-card-desc">High-converting social offer flyer with free consultation badge and direct contact hotline.</div>
+          <a href="C:/Users/shonk/.gemini/antigravity-ide/brain/30fa9c2e-58ea-41ee-86a5-96bc05950350/flyer_facebook_1786137611025.png" download="Kapate_Facebook_Flyer.png" class="btn btn-primary">Download Image</a>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    function renderFlyer() {
+      document.getElementById('flyer-tag').innerText = document.getElementById('input-tag').value;
+      document.getElementById('flyer-headline').innerText = document.getElementById('input-headline').value;
+      document.getElementById('flyer-subheadline').innerText = document.getElementById('input-subheadline').value;
+
+      document.getElementById('flyer-s1').innerText = document.getElementById('input-s1').value;
+      document.getElementById('flyer-s2').innerText = document.getElementById('input-s2').value;
+      document.getElementById('flyer-s3').innerText = document.getElementById('input-s3').value;
+      document.getElementById('flyer-s4').innerText = document.getElementById('input-s4').value;
+
+      document.getElementById('flyer-cta').innerText = document.getElementById('input-cta').value;
+      document.getElementById('flyer-phone').innerText = document.getElementById('input-phone').value;
+      document.getElementById('flyer-email').innerText = document.getElementById('input-email').value;
+    }
+
+    function updateAspectRatio() {
+      const ratio = document.getElementById('platform-ratio').value;
+      const canvas = document.getElementById('flyer-canvas');
+      canvas.className = 'flyer-template aspect-' + ratio;
+    }
+
+    function applyPreset(preset) {
+      document.querySelectorAll('.preset-pill').forEach(el => el.classList.remove('active'));
+      event.target.classList.add('active');
+
+      if (preset === 'corporate') {
+        document.getElementById('input-tag').value = 'For Enterprise & Partner Firms';
+        document.getElementById('input-headline').value = 'Accelerate Enterprise Growth with Next-Gen Tech';
+        document.getElementById('input-subheadline').value = 'Custom Software Engineering, Modern ERP Platforms, and AI Integration Tailored for Corporate Firms.';
+        document.getElementById('input-s1').value = '⚡ Enterprise ERP & HRMS';
+        document.getElementById('input-s2').value = '🤖 AI & Machine Learning';
+        document.getElementById('input-s3').value = '🌐 Scalable Web Systems';
+        document.getElementById('input-s4').value = '☁️ Cloud & DevOps Infrastructure';
+      } else if (preset === 'customers') {
+        document.getElementById('input-tag').value = 'Special Client Offer';
+        document.getElementById('input-headline').value = 'Build Custom Web & Mobile Apps That Win Customers';
+        document.getElementById('input-subheadline').value = 'Turn your ideas into high-converting digital products with fast turnaround & 24/7 technical support.';
+        document.getElementById('input-s1').value = '📱 Custom iOS & Android Apps';
+        document.getElementById('input-s2').value = '💻 E-Commerce & Web Portals';
+        document.getElementById('input-s3').value = '🚀 Free 1-on-1 Consultation';
+        document.getElementById('input-s4').value = '🔒 100% Enterprise Security';
+      } else if (preset === 'academic') {
+        document.getElementById('input-tag').value = 'Academic & Student Support';
+        document.getElementById('input-headline').value = 'Master Engineering Projects & Research Mentorship';
+        document.getElementById('input-subheadline').value = 'Expert guidance for B.Tech, M.Tech, and Ph.D. projects in AI, Cloud, Full-Stack & Machine Learning.';
+        document.getElementById('input-s1').value = '🎓 Final Year Engineering Projects';
+        document.getElementById('input-s2').value = '🧠 AI/ML & Deep Learning Models';
+        document.getElementById('input-s3').value = '📄 Research Paper & IEEE Format';
+        document.getElementById('input-s4').value = '🛠️ Full Code Execution & Support';
+      }
+      renderFlyer();
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      if (tab === 'studio') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-studio').style.display = 'grid';
+        document.getElementById('tab-gallery').style.display = 'none';
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-studio').style.display = 'none';
+        document.getElementById('tab-gallery').style.display = 'grid';
+      }
+    }
+
+    function copyCaption() {
+      const text = document.getElementById('caption-text').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Social Media Caption copied to clipboard!');
+      });
+    }
+
+    function downloadFlyerPNG() {
+      const element = document.getElementById('flyer-canvas');
+      html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: null
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'Kapate_Consultancy_Flyer.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>

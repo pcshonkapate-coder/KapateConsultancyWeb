@@ -1,0 +1,39 @@
+{
+  "name": "Kapate Consultancy & ERP Platform",
+  "short_name": "Kapate ERP",
+  "description": "Enterprise HRMS, Workforce Management & IT Consultancy Portal by Kapate Consultancy (Pune, India).",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090d16",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/assets/Kapate-Consultancy-Logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/Kapate-Consultancy-Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ERP Portal",
+      "short_name": "ERP",
+      "description": "Open Employee ERP & HRMS Portal",
+      "url": "/erp.html"
+    },
+    {
+      "name": "Contact Us",
+      "short_name": "Contact",
+      "description": "Send Inquiry to Kapate Consultancy",
+      "url": "/index.html#contact"
+    }
+  ]
+}

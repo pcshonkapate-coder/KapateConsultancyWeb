@@ -1,0 +1,19 @@
+# Render Blueprint Deployment Configuration
+# Kapate Consultancy & Enterprise ERP Platform
+# For instructions, visit: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: kapate-consultancy-erp
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn server:app"
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: PORT
+        value: 10000

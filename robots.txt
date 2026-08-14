@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /legal.html
+Allow: /erp.html
+Allow: /assets/
+
+Sitemap: https://kapateconsultancy.in/sitemap.xml

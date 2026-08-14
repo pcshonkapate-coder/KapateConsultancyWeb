@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise SaaS Suite | Kapate Consultancy</title>
+    
+    <!-- PWA & Mobile Web App Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kapate Admin">
+    <link rel="apple-touch-icon" href="assets/Kapate-Consultancy-Logo.png">
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --color-bg: #0b0f19;
+            --color-surface: #111827;
+            --color-surface-card: #1f293d;
+            --color-surface-hover: #28354e;
+            --color-text: #f9fafb;
+            --color-text-muted: #9ca3af;
+            --color-border: #1f2937;
+            --color-border-accent: rgba(59, 130, 246, 0.4);
+            
+            --color-primary: #3b82f6;
+            --color-primary-hover: #2563eb;
+            --color-primary-glow: rgba(59, 130, 246, 0.25);
+            
+            --color-accent: #06b6d4;
+            --color-gold: #f59e0b;
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-purple: #8b5cf6;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-full: 9999px;
+
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --------------------------------------------------------------------------
+           1. LOGIN SCREEN
+           -------------------------------------------------------------------------- */
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+            padding: 20px;
+        }
+
+        .login-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+        .login-brand {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--color-text);
+        }
+        .login-brand span { color: var(--color-primary); }
+        .login-sub { color: var(--color-text-muted); font-size: 0.88rem; margin-bottom: 2rem; }
+
+        .form-group { margin-bottom: 1.4rem; text-align: left; }
+        .form-group label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-muted);
+            margin-bottom: 6px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-size: 0.92rem;
+            transition: var(--transition);
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-glow);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0.75rem 1.4rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: var(--color-primary);
+            color: #fff;
+        }
+        .btn-primary:hover { background: var(--color-primary-hover); transform: translateY(-1px); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+        .btn-outline:hover { background: var(--color-surface-card); border-color: var(--color-primary); }
+        .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.78rem; }
+        .btn-block { width: 100%; }
+
+        .alert {
+            padding: 0.8rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 1.2rem;
+            display: none;
+        }
+        .alert-danger { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--color-danger); color: #fca5a5; }
+        .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid var(--color-success); color: #6ee7b7; }
+
+        /* --------------------------------------------------------------------------
+           2. MAIN SAAS LAYOUT (SIDEBAR + TOPBAR + CONTENT)
+           -------------------------------------------------------------------------- */
+        .saas-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+            z-index: 100;
+            transition: var(--transition);
+        }
+        .sidebar-brand {
+            padding: 1.5rem 1.4rem;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand-icon {
+            width: 34px; height: 34px; border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-family: 'Outfit'; color: #fff;
+        }
+        .brand-title { font-family: 'Outfit'; font-size: 1.15rem; font-weight: 800; }
+        .brand-title span { color: var(--color-primary); }
+
+        .sidebar-nav {
+            padding: 1rem 0.8rem;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .nav-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--color-text-muted);
+            padding: 12px 12px 6px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            color: var(--color-text-muted);
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+        .nav-item:hover {
+            color: var(--color-text);
+            background: var(--color-surface-hover);
+        }
+        .nav-item.active {
+            color: #fff;
+            background: var(--color-primary);
+            box-shadow: 0 4px 14px var(--color-primary-glow);
+        }
+        .nav-badge {
+            margin-left: auto;
+            background: var(--color-surface-card);
+            border: 1px solid var(--color-border);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+        .nav-item.active .nav-badge {
+            background: rgba(255,255,255,0.2);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .sidebar-footer {
+            padding: 1rem 1.4rem;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: var(--color-primary); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.85rem;
+        }
+        .user-details { font-size: 0.82rem; }
+        .user-name { font-weight: 700; color: var(--color-text); }
+        .user-role { font-size: 0.72rem; color: var(--color-text-muted); }
+
+        /* Main Content Wrapper */
+        .main-wrapper {
+            margin-left: 260px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Top Header */
+        .topbar {
+            height: 64px;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.8rem;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .page-title { font-family: 'Outfit'; font-size: 1.2rem; font-weight: 700; }
+        .server-pulse {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 0.75rem; color: var(--color-success); font-weight: 600;
+            background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: var(--radius-full);
+        }
+        .pulse-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: var(--color-success);
+            box-shadow: 0 0 8px var(--color-success); animation: pulse 2s ease infinite;
+        }
+
+        .topbar-right { display: flex; align-items: center; gap: 14px; }
+        
+        /* Notifications Drawer Bell */
+        .notif-bell {
+            position: relative;
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            color: var(--color-text-muted);
+            transition: var(--transition);
+        }
+        .notif-bell:hover { color: var(--color-text); border-color: var(--color-primary); }
+        .notif-count {
+            position: absolute; top: -3px; right: -3px;
+            background: var(--color-danger); color: #fff;
+            font-size: 0.65rem; font-weight: 800;
+            width: 18px; height: 18px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid var(--color-surface);
+        }
+
+        .notif-dropdown {
+            position: absolute; top: 52px; right: 0;
+            width: 340px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            display: none;
+            z-index: 200;
+            overflow: hidden;
+        }
+        .notif-dropdown.show { display: block; }
+        .notif-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 0.85rem; font-weight: 700;
+        }
+        .notif-list { max-height: 300px; overflow-y: auto; }
+        .notif-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+        .notif-item:hover { background: var(--color-surface-hover); }
+        .notif-item-title { font-weight: 700; color: var(--color-text); margin-bottom: 2px; }
+        .notif-item-desc { color: var(--color-text-muted); font-size: 0.76rem; }
+        .notif-item-time { font-size: 0.68rem; color: var(--color-text-muted); margin-top: 4px; }
+
+        /* Content Container */
+        .content-body {
+            padding: 1.8rem;
+            flex: 1;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* --------------------------------------------------------------------------
+           3. DASHBOARD KPI CARDS & CHARTS
+           -------------------------------------------------------------------------- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.8rem;
+        }
+        .kpi-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1.4rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        .kpi-card:hover {
+            border-color: var(--color-border-accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+        .kpi-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 8px; }
+        .kpi-value { font-family: 'Outfit'; font-size: 1.8rem; font-weight: 800; color: var(--color-text); margin-bottom: 4px; }
+        .kpi-sub { font-size: 0.76rem; color: var(--color-success); font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .kpi-icon {
+            position: absolute; right: 1.2rem; top: 1.4rem;
+            width: 42px; height: 42px; border-radius: var(--radius-sm);
+            background: rgba(59, 130, 246, 0.1); color: var(--color-primary);
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.8rem;
+        }
+        .chart-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1.4rem;
+        }
+        .chart-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.2rem;
+        }
+        .chart-title { font-size: 0.95rem; font-weight: 700; }
+
+        /* --------------------------------------------------------------------------
+           4. KANBAN PROJECT BOARD
+           -------------------------------------------------------------------------- */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.2rem;
+            align-items: start;
+        }
+        .kanban-col {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            min-height: 500px;
+        }
+        .kanban-col-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .kanban-col-title { font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .col-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .col-dot.pending { background: var(--color-gold); }
+        .col-dot.progress { background: var(--color-primary); }
+        .col-dot.review { background: var(--color-purple); }
+        .col-dot.completed { background: var(--color-success); }
+
+        .kanban-card {
+            background: var(--color-surface-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            cursor: grab;
+            transition: var(--transition);
+        }
+        .kanban-card:hover {
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+        .kanban-card-title { font-size: 0.88rem; font-weight: 700; margin-bottom: 6px; }
+        .kanban-card-client { font-size: 0.78rem; color: var(--color-text-muted); margin-bottom: 10px; }
+        
+        .progress-bar-wrap {
+            height: 6px; background: var(--color-bg);
+            border-radius: var(--radius-full); overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar-fill { height: 100%; background: var(--color-primary); border-radius: var(--radius-full); transition: width 0.4s ease; }
+
+        .kanban-card-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 0.75rem; color: var(--color-text-muted);
+        }
+        .kanban-budget { font-weight: 700; color: var(--color-success); }
+
+        /* --------------------------------------------------------------------------
+           5. DATA TABLES (CRM CLIENTS, LEADS, INQUIRIES)
+           -------------------------------------------------------------------------- */
+        .table-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .table-toolbar {
+            padding: 1.2rem;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--color-border);
+            gap: 12px; flex-wrap: wrap;
+        }
+        .search-box {
+            position: relative; flex: 1; max-width: 320px;
+        }
+        .search-box input {
+            width: 100%; padding: 0.6rem 1rem 0.6rem 2.2rem;
+            background: var(--color-bg); border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm); color: var(--color-text); font-size: 0.85rem;
+        }
+        .search-icon {
+            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+            color: var(--color-text-muted); font-size: 0.85rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+        .data-table th {
+            background: rgba(0,0,0,0.2);
+            padding: 0.9rem 1.2rem;
+            font-weight: 700;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .data-table td {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+        .data-table tr:hover { background: var(--color-surface-hover); }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: var(--radius-full);
+            font-size: 0.72rem; font-weight: 700;
+        }
+        .badge-vip { background: rgba(245, 158, 11, 0.15); color: var(--color-gold); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-enterprise { background: rgba(139, 92, 246, 0.15); color: var(--color-purple); border: 1px solid rgba(139, 92, 246, 0.3); }
+        .badge-lead { background: rgba(59, 130, 246, 0.15); color: var(--color-primary); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-hot { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-warm { background: rgba(245, 158, 11, 0.15); color: var(--color-gold); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-cold { background: rgba(156, 163, 175, 0.15); color: var(--color-text-muted); border: 1px solid rgba(156, 163, 175, 0.3); }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.show { display: flex; animation: fadeIn 0.25s ease; }
+        .modal-box {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            width: 100%; max-width: 520px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--color-border);
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 1.05rem; font-weight: 700;
+        }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--color-border);
+            display: flex; justify-content: flex-end; gap: 10px;
+        }
+
+        /* Responsive Layout Rules */
+        @media (max-width: 1024px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .kanban-board { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .sidebar-brand span, .nav-label, .nav-item span, .user-details { display: none; }
+            .main-wrapper { margin-left: 70px; }
+            .kanban-board { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===================== LOGIN SCREEN ===================== -->
+    <div id="login-screen" class="login-wrapper">
+        <div class="login-card">
+            <div class="login-brand">Kapate <span>SaaS Suite</span></div>
+            <p class="login-sub">Enterprise Business Management &amp; CRM Platform</p>
+
+            <div id="login-alert" class="alert alert-danger"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="login-role" class="form-control">
+                        <option value="Admin">Admin (Full Access)</option>
+                        <option value="Manager">Manager (CRM &amp; Projects)</option>
+                        <option value="Editor">Editor (CMS Only)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="Enter system password" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Authenticate &amp; Launch &rarr;</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MAIN SAAS DASHBOARD ===================== -->
+    <div id="dashboard-screen" class="saas-layout" style="display: none;">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">KC</div>
+                <div class="brand-title">Kapate <span>SaaS</span></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-label">Core Modules</div>
+                <a class="nav-item active" data-tab="tab-analytics">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a class="nav-item" data-tab="tab-clients">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Clients (CRM)</span>
+                    <span id="badge-clients-count" class="nav-badge">3</span>
+                </a>
+                <a class="nav-item" data-tab="tab-kanban">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M16 7v10"/></svg>
+                    <span>Projects Kanban</span>
+                    <span id="badge-projects-count" class="nav-badge">4</span>
+                </a>
+                <a class="nav-item" data-tab="tab-leads">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span>Leads Engine</span>
+                    <span id="badge-leads-count" class="nav-badge">0</span>
+                </a>
+
+                <div class="nav-label">Operations &amp; Web</div>
+                <a class="nav-item" data-tab="tab-inquiries">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span>Inquiries</span>
+                    <span id="badge-inquiries-count" class="nav-badge">0</span>
+                </a>
+                <a class="nav-item" data-tab="tab-reviews">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span>Reviews CMS</span>
+                </a>
+                <a class="nav-item" data-tab="tab-activity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Activity Audit Log</span>
+                </a>
+
+                <div class="nav-label">System</div>
+                <a class="nav-item" data-tab="tab-reports">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Export Reports</span>
+                </a>
+                <a class="nav-item" data-tab="tab-settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                </a>
+                <a href="erp.html" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                    <span>ERP Suite</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="avatar-initials">SK</div>
+                    <div class="user-details">
+                        <div class="user-name">Shon Kapate</div>
+                        <div class="user-role" id="display-role">Admin</div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn btn-outline btn-sm" title="Log out">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN WRAPPER -->
+        <main class="main-wrapper">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title" id="active-tab-title">Executive Dashboard</h1>
+                    <div class="server-pulse">
+                        <span class="pulse-dot"></span> System Live &amp; Operational
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Notifications Bell -->
+                    <div class="notif-bell" id="notif-bell-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                        <span id="notif-unread-count" class="notif-count">1</span>
+
+                        <div id="notif-dropdown" class="notif-dropdown">
+                            <div class="notif-header">
+                                <span>Notifications</span>
+                                <a id="mark-notif-read-btn" style="color:var(--color-primary); cursor:pointer; font-size:0.75rem;">Mark Read</a>
+                            </div>
+                            <div id="notif-list-container" class="notif-list">
+                                <!-- Dynamic notifications -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTENT BODY -->
+            <div class="content-body">
+                
+                <!-- TAB 1: ANALYTICS DASHBOARD -->
+                <section id="tab-analytics" class="tab-content active">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-title">Total Revenue</div>
+                            <div class="kpi-value" id="kpi-revenue">₹3,30,000</div>
+                            <div class="kpi-sub">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                                +24.8% vs last month
+                            </div>
+                            <div class="kpi-icon">₹</div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-title">Active Clients</div>
+                            <div class="kpi-value" id="kpi-clients">3</div>
+                            <div class="kpi-sub">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                100% Retention Rate
+                            </div>
+                            <div class="kpi-icon">👥</div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-title">Active Projects</div>
+                            <div class="kpi-value" id="kpi-projects">3</div>
+                            <div class="kpi-sub">
+                                <span>3 On Track / 0 Delayed</span>
+                            </div>
+                            <div class="kpi-icon">💼</div>
+                        </div>
+
+                        <div class="kpi-card">
+                            <div class="kpi-title">Lead Conversion Rate</div>
+                            <div class="kpi-value" id="kpi-conversion">38.5%</div>
+                            <div class="kpi-sub">
+                                <span>Above Industry Average</span>
+                            </div>
+                            <div class="kpi-icon">🎯</div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">Revenue Growth &amp; Client Trajectory</div>
+                            </div>
+                            <canvas id="chart-revenue-growth" height="130"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">Service Distribution</div>
+                            </div>
+                            <canvas id="chart-service-distribution" height="180"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 2: CLIENTS CRM -->
+                <section id="tab-clients" class="tab-content">
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="client-search-input" placeholder="Search clients by name, company, email...">
+                            </div>
+                            <button id="add-client-modal-btn" class="btn btn-primary btn-sm">+ Add New Client</button>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Client Name</th>
+                                        <th>Company</th>
+                                        <th>Contact Email</th>
+                                        <th>Tag / Tier</th>
+                                        <th>Status</th>
+                                        <th>Total Spent</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clients-table-body">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 3: PROJECTS KANBAN BOARD -->
+                <section id="tab-kanban" class="tab-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                        <h2 style="font-size:1.1rem; font-weight:700;">Drag &amp; Drop Project Pipelines</h2>
+                        <button id="add-project-modal-btn" class="btn btn-primary btn-sm">+ New Project</button>
+                    </div>
+
+                    <div class="kanban-board">
+                        <!-- PENDING -->
+                        <div class="kanban-col" data-status="Pending" ondragover="allowDrop(event)" ondrop="dropKanban(event)">
+                            <div class="kanban-col-header">
+                                <span class="kanban-col-title"><span class="col-dot pending"></span> Pending / Backlog</span>
+                                <span id="count-pending" class="nav-badge">0</span>
+                            </div>
+                            <div id="col-pending-container"></div>
+                        </div>
+
+                        <!-- IN PROGRESS -->
+                        <div class="kanban-col" data-status="In Progress" ondragover="allowDrop(event)" ondrop="dropKanban(event)">
+                            <div class="kanban-col-header">
+                                <span class="kanban-col-title"><span class="col-dot progress"></span> In Progress</span>
+                                <span id="count-progress" class="nav-badge">0</span>
+                            </div>
+                            <div id="col-progress-container"></div>
+                        </div>
+
+                        <!-- REVIEW -->
+                        <div class="kanban-col" data-status="Review" ondragover="allowDrop(event)" ondrop="dropKanban(event)">
+                            <div class="kanban-col-header">
+                                <span class="kanban-col-title"><span class="col-dot review"></span> Review &amp; QA</span>
+                                <span id="count-review" class="nav-badge">0</span>
+                            </div>
+                            <div id="col-review-container"></div>
+                        </div>
+
+                        <!-- COMPLETED -->
+                        <div class="kanban-col" data-status="Completed" ondragover="allowDrop(event)" ondrop="dropKanban(event)">
+                            <div class="kanban-col-header">
+                                <span class="kanban-col-title"><span class="col-dot completed"></span> Completed</span>
+                                <span id="count-completed" class="nav-badge">0</span>
+                            </div>
+                            <div id="col-completed-container"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 4: LEADS ENGINE -->
+                <section id="tab-leads" class="tab-content">
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <h3 style="font-size:0.95rem; font-weight:700;">Website Auto-Captured Lead Stream</h3>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Lead Name</th>
+                                        <th>Contact Email</th>
+                                        <th>Service Interested</th>
+                                        <th>Lead Score</th>
+                                        <th>Priority</th>
+                                        <th>Received Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leads-table-body">
+                                    <!-- Dynamic Leads -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 5: INQUIRIES -->
+                <section id="tab-inquiries" class="tab-content">
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <h3 style="font-size:0.95rem; font-weight:700;">Customer Contact Form Submissions</h3>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ref Number</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Service</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inquiries-table-body">
+                                    <!-- Dynamic Inquiries -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 6: REVIEWS MODERATION -->
+                <section id="tab-reviews" class="tab-content">
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <h3 style="font-size:0.95rem; font-weight:700;">Client Reviews Moderation</h3>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Client Name</th>
+                                        <th>Role / Position</th>
+                                        <th>Rating</th>
+                                        <th>Review Text</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviews-table-body">
+                                    <!-- Dynamic Reviews -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 7: ACTIVITY AUDIT LOG -->
+                <section id="tab-activity" class="tab-content">
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <h3 style="font-size:0.95rem; font-weight:700;">Administrative Activity &amp; Audit Log</h3>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Action Executed</th>
+                                        <th>Details</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activity-table-body">
+                                    <!-- Dynamic Audit Logs -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 8: REPORTS & EXPORT -->
+                <section id="tab-reports" class="tab-content">
+                    <div class="kpi-grid">
+                        <div class="kpi-card" style="cursor:pointer;" onclick="downloadExport('clients')">
+                            <div class="kpi-title">Clients Report (CSV)</div>
+                            <div class="kpi-value" style="font-size:1.2rem;">📥 Export Clients</div>
+                            <div class="kpi-sub">Download full CRM client list</div>
+                        </div>
+
+                        <div class="kpi-card" style="cursor:pointer;" onclick="downloadExport('projects')">
+                            <div class="kpi-title">Projects Report (CSV)</div>
+                            <div class="kpi-value" style="font-size:1.2rem;">📥 Export Projects</div>
+                            <div class="kpi-sub">Download active project budgets &amp; status</div>
+                        </div>
+
+                        <div class="kpi-card" style="cursor:pointer;" onclick="downloadExport('leads')">
+                            <div class="kpi-title">Leads Report (CSV)</div>
+                            <div class="kpi-value" style="font-size:1.2rem;">📥 Export Leads</div>
+                            <div class="kpi-sub">Download scored lead contacts</div>
+                        </div>
+
+                        <div class="kpi-card" style="cursor:pointer;" onclick="downloadExport('inquiries')">
+                            <div class="kpi-title">Inquiries Report (CSV)</div>
+                            <div class="kpi-value" style="font-size:1.2rem;">📥 Export Inquiries</div>
+                            <div class="kpi-sub">Download website message logs</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 9: SETTINGS PANEL -->
+                <section id="tab-settings" class="tab-content">
+                    <div class="chart-card" style="max-width: 600px;">
+                        <div class="chart-header">
+                            <div class="chart-title">System Settings &amp; SMTP Configuration</div>
+                        </div>
+                        <form id="settings-form">
+                            <div class="form-group">
+                                <label>SMTP Host</label>
+                                <input type="text" id="setting-smtp-host" class="form-control" value="smtp.gmail.com">
+                            </div>
+                            <div class="form-group">
+                                <label>SMTP Port</label>
+                                <input type="number" id="setting-smtp-port" class="form-control" value="587">
+                            </div>
+                            <div class="form-group">
+                                <label>Sender Email Address</label>
+                                <input type="email" id="setting-smtp-email" class="form-control" value="office.kapateconsultancy@gmail.com">
+                            </div>
+                            <div class="form-group">
+                                <label>System Admin Password</label>
+                                <input type="password" id="setting-admin-pass" class="form-control" placeholder="••••••••••••">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </form>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ===================== MODAL: ADD CLIENT ===================== -->
+    <div id="add-client-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>Add New Client</span>
+                <span class="close-modal" style="cursor:pointer;" onclick="closeModals()">&times;</span>
+            </div>
+            <form id="add-client-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="nc-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address *</label>
+                        <input type="email" id="nc-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Company Name</label>
+                        <input type="text" id="nc-company" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="nc-phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Tag / Tier</label>
+                        <select id="nc-tag" class="form-control">
+                            <option value="Lead">Lead</option>
+                            <option value="VIP">VIP</option>
+                            <option value="Enterprise">Enterprise</option>
+                            <option value="Academic">Academic</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Budget / Spent (₹)</label>
+                        <input type="number" id="nc-spent" class="form-control" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Client Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: ADD PROJECT ===================== -->
+    <div id="add-project-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>Create New Project</span>
+                <span class="close-modal" style="cursor:pointer;" onclick="closeModals()">&times;</span>
+            </div>
+            <form id="add-project-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Project Title *</label>
+                        <input type="text" id="np-title" class="form-control" placeholder="e.g. AI Vision Engine" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Client Name *</label>
+                        <input type="text" id="np-client" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Service Category</label>
+                        <select id="np-service" class="form-control">
+                            <option value="webdev">Website Development</option>
+                            <option value="aiml">AI &amp; Machine Learning</option>
+                            <option value="cloud">Cloud Architecture</option>
+                            <option value="academic">Academic Mentorship</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget (₹)</label>
+                        <input type="number" id="np-budget" class="form-control" value="50000">
+                    </div>
+                    <div class="form-group">
+                        <label>Initial Status</label>
+                        <select id="np-status" class="form-control">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Review">Review</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

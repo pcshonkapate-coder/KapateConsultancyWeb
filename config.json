@@ -1,0 +1,10 @@
+{
+    "SMTP_SERVER": "smtp.gmail.com",
+    "SMTP_PORT": 587,
+    "SMTP_EMAIL": "office.kapateconsultancy@gmail.com",
+    "SMTP_PASSWORD": "twwwzjrujirsvxjz",
+    "ADMIN_PASSWORD": "Admin@KapateConsultancy8421174957",
+    "TWILIO_ACCOUNT_SID": "",
+    "TWILIO_AUTH_TOKEN": "",
+    "TWILIO_PHONE_NUMBER": ""
+}
