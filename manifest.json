@@ -10,13 +10,13 @@
   "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "/assets/Kapate-Consultancy-Logo.png",
+      "src": "assets/KAPATE CONSULTANCY.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/Kapate-Consultancy-Logo.png",
+      "src": "assets/KAPATE CONSULTANCY.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

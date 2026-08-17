@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enterprise ERP &amp; HRMS | Kapate Consultancy</title>
     
-    <!-- PWA & Mobile Web App Meta -->
+    <!-- Favicons for Google Search Results & Browsers -->
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kapate ERP">
     <meta name="google-site-verification" content="4GXKFqnFJ35MxXGIEZBZ60AN9ygzgpO60Z7xIZo3ZNI" />
-    <link rel="apple-touch-icon" href="assets/Kapate-Consultancy-Logo.png">
 
     <!-- Google Fonts -->
 
@@ -458,14 +462,24 @@
                     </div>
 
                     <!-- LOGIN FORM -->
-                    <form id="auth-login-form">
-                        <label class="auth-label">Registered Email</label>
-                        <input type="email" id="li-email" class="auth-input" placeholder="rahul@kapate.in" required>
+                    <form id="auth-login-form" class="space-y-3">
+                        <div>
+                            <label class="auth-label">Registered Email</label>
+                            <input type="email" id="li-email" class="auth-input" placeholder="office.kapateconsultancy@gmail.com" value="office.kapateconsultancy@gmail.com" required>
+                        </div>
+                        <div>
+                            <label class="auth-label">Password</label>
+                            <input type="password" id="li-password" class="auth-input" placeholder="Enter employee password" value="Admin@KapateConsultancy8421174957" required>
+                        </div>
 
-                        <label class="auth-label">Mobile Number (for OTP)</label>
-                        <input type="tel" id="li-phone" class="auth-input" placeholder="+91 98765 43210" required>
+                        <button type="submit" class="auth-btn-primary">Sign In to Portal &rarr;</button>
 
-                        <button type="submit" class="auth-btn-primary">Send Verification Code &rarr;</button>
+                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b;">
+                            <span style="display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">⚡ Quick Presets:</span>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button type="button" onclick="document.getElementById('li-email').value='office.kapateconsultancy@gmail.com';document.getElementById('li-password').value='Admin@KapateConsultancy8421174957';" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:#1e293b;color:#38bdf8;border:1px solid #334155;cursor:pointer;">CEO (Admin)</button>
+                            </div>
+                        </div>
                     </form>
 
                     <!-- REGISTRATION FORM -->
@@ -563,8 +577,6 @@
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-payroll">
                     <span>💰</span> Payroll &amp; Payslips
                 </a>
-
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Operations</div>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-attendance">
                     <span>⏱️</span> Attendance Clock
                 </a>
@@ -574,13 +586,30 @@
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-tasks">
                     <span>📋</span> Task Kanban
                 </a>
-                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-recruitments">
-                    <span>👨‍💼</span> HR Recruitment
+
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Consultancy Operations</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-clients">
+                    <span>🏢</span> Clients CRM
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-invoices">
+                    <span>📄</span> Invoices &amp; Proposals
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-projects">
+                    <span>🚀</span> Consulting Projects
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-timesheets">
+                    <span>⏳</span> Billable Timesheets
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-inquiries">
+                    <span>📬</span> Service Inquiries
                 </a>
 
                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Finance &amp; Company</div>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-finance">
                     <span>💼</span> Finance Ledger
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-recruitments">
+                    <span>👨‍💼</span> HR Recruitment
                 </a>
             </nav>
 
@@ -608,7 +637,10 @@
                     </button>
                     <h2 class="font-outfit font-bold text-base sm:text-lg text-white truncate" id="erp-tab-title">ERP Control Center</h2>
                 </div>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="confirmResetDatabase()" class="flex items-center gap-1.5 text-xs bg-red-950/50 hover:bg-red-900/80 border border-red-500/40 text-red-300 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer shadow-sm">
+                        <span>🔄</span> Reset DB to Fresh
+                    </button>
                     <div class="hidden sm:flex items-center gap-2 text-xs bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         HQ Server Sync
@@ -916,6 +948,175 @@
                             </tbody>
                         </table>
                     </div>
+                <!-- 9. CLIENTS CRM -->
+                <section id="tab-clients" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Corporate Clients &amp; CRM</h3>
+                            <p class="text-xs text-slate-400">Manage client profiles, retainers, and billing contacts.</p>
+                        </div>
+                        <button onclick="toggleClientModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">+ Add Client Profile</button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder p-4 rounded-xl flex items-center gap-3">
+                        <input type="text" id="client-search-input" onkeyup="filterClientsTable()" class="w-full bg-slate-900 border border-darkBorder text-white px-4 py-2 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="Search clients by name, company, email, or tier...">
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Client Name &amp; Company</th>
+                                    <th class="p-4">Email &amp; Phone</th>
+                                    <th class="p-4">Tier Tag</th>
+                                    <th class="p-4">Lifetime Billed (₹)</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 10. INVOICES & PROPOSALS -->
+                <section id="tab-invoices" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Client Invoices &amp; Quotations</h3>
+                            <p class="text-xs text-slate-400">Generate professional GST billing invoices and track payment statuses.</p>
+                        </div>
+                        <button onclick="toggleInvoiceModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">+ Create Invoice / Proposal</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Total Invoiced Volume</div>
+                            <div class="text-2xl font-bold font-outfit text-white" id="inv-stat-total">₹0</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Paid Disbursements</div>
+                            <div class="text-2xl font-bold font-outfit text-emerald-400" id="inv-stat-paid">₹0</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-5 rounded-xl">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Unpaid / Pending Invoices</div>
+                            <div class="text-2xl font-bold font-outfit text-amber-400" id="inv-stat-unpaid">₹0</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Invoice #</th>
+                                    <th class="p-4">Client Name</th>
+                                    <th class="p-4">Service</th>
+                                    <th class="p-4">Amount (₹)</th>
+                                    <th class="p-4">GST Tax (18%)</th>
+                                    <th class="p-4">Total (₹)</th>
+                                    <th class="p-4">Due Date</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 11. CONSULTING PROJECTS -->
+                <section id="tab-projects" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Consulting Projects &amp; Retainers</h3>
+                            <p class="text-xs text-slate-400">Track client project budgets, deliverables, and progress milestones.</p>
+                        </div>
+                        <button onclick="toggleProjectModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">+ Create Project</button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Project Title</th>
+                                    <th class="p-4">Client Name</th>
+                                    <th class="p-4">Service Category</th>
+                                    <th class="p-4">Budget (₹)</th>
+                                    <th class="p-4">Progress %</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projects-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 12. BILLABLE TIMESHEETS -->
+                <section id="tab-timesheets" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Consultant Timesheets &amp; Billable Hours</h3>
+                            <p class="text-xs text-slate-400">Log billable consulting hours against client project budgets.</p>
+                        </div>
+                        <button onclick="toggleTimesheetModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">+ Log Billable Hours</button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Consultant</th>
+                                    <th class="p-4">Project &amp; Client</th>
+                                    <th class="p-4">Hours Logged</th>
+                                    <th class="p-4">Billable Rate (₹/hr)</th>
+                                    <th class="p-4">Total Amount (₹)</th>
+                                    <th class="p-4">Log Date</th>
+                                    <th class="p-4">Work Summary</th>
+                                    <th class="p-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timesheets-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 13. SERVICE INQUIRIES & LEAD CONVERSION -->
+                <section id="tab-inquiries" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Web Inquiries &amp; Lead Conversion Pipeline</h3>
+                            <p class="text-xs text-slate-400">Inquiries submitted on website converted directly into CRM clients.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Lead Name</th>
+                                    <th class="p-4">Email &amp; Phone</th>
+                                    <th class="p-4">Company</th>
+                                    <th class="p-4">Service Requested</th>
+                                    <th class="p-4">Message</th>
+                                    <th class="p-4">Date Received</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inquiries-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
             </div>
@@ -924,7 +1125,7 @@
 
     <!-- ===================== MODAL: REGISTER EMPLOYEE ===================== -->
     <div id="emp-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h4 class="font-outfit font-bold text-white text-base">Register Employee Profile</h4>
                 <button onclick="toggleEmployeeModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
@@ -932,84 +1133,145 @@
             <form id="add-employee-form" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Full Name</label>
-                        <input type="text" id="emp-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Full Name *</label>
+                        <input type="text" id="emp-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. Ananya Deshmukh" required>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Email Address</label>
-                        <input type="email" id="emp-email" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Email Address *</label>
+                        <input type="email" id="emp-email" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. ananya@company.com" required>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Department</label>
-                        <input type="text" id="emp-dept" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="Engineering" required>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Department *</label>
+                        <input type="text" id="emp-dept" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" value="Engineering" required>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Job Role</label>
-                        <select id="emp-role" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Job Role / Designation *</label>
+                        <select id="emp-role" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
                             <option value="Developer">Developer</option>
                             <option value="Manager">Manager</option>
                             <option value="HR">HR</option>
                             <option value="Intern">Intern</option>
+                            <option value="Executive">Executive</option>
                         </select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-slate-400 font-semibold mb-1">Employment Type</label>
-                        <select id="emp-type" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
+                        <select id="emp-type" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
                             <option value="Full-time">Full-time</option>
                             <option value="Intern">Intern</option>
                             <option value="Contract">Contract</option>
+                            <option value="Part-time">Part-time</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Basic Pay (₹)</label>
-                        <input type="number" id="emp-pay" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" value="45000" required>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Monthly Basic Pay (₹) *</label>
+                        <input type="number" id="emp-pay" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" value="45000" required>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="toggleEmployeeModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Save Profile</button>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Set Employee Password *</label>
+                    <input type="text" id="emp-password" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs font-mono focus:border-accentBlue focus:outline-none" placeholder="e.g. EmployeePass123" value="Kapate@123" required>
+                </div>
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
+                    <button type="button" onclick="toggleEmployeeModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Save Profile</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ===================== MODAL: CREATE TASK ===================== -->
+    <!-- ===================== MODAL: EMPLOYEE PROFILE DETAILS ===================== -->
+    <div id="emp-profile-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-accentBlue to-accentCyan flex items-center justify-center text-white font-bold text-lg" id="profile-modal-avatar">EP</div>
+                    <div>
+                        <h4 class="font-outfit font-bold text-white text-lg" id="profile-modal-name">Employee Name</h4>
+                        <div class="text-xs text-accentBlue font-medium" id="profile-modal-role-dept">Developer &bull; Engineering</div>
+                    </div>
+                </div>
+                <button onclick="toggleProfileModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="space-y-4 text-xs text-slate-300">
+                <div class="grid grid-cols-2 gap-3 p-3 bg-slate-900/60 rounded-xl border border-darkBorder">
+                    <div><span class="text-slate-500">Employee ID:</span> <strong class="text-white" id="profile-modal-id">KC-EMP-101</strong></div>
+                    <div><span class="text-slate-500">Email:</span> <strong class="text-white" id="profile-modal-email">user@domain.com</strong></div>
+                    <div><span class="text-slate-500">Type:</span> <strong class="text-white" id="profile-modal-type">Full-time</strong></div>
+                    <div><span class="text-slate-500">Account Password:</span> <strong class="text-amber-400 font-mono" id="profile-modal-pass">Kapate@123</strong></div>
+                </div>
+                
+                <div class="p-3 bg-slate-900/60 rounded-xl border border-darkBorder space-y-1">
+                    <div class="text-slate-400 font-semibold mb-1">Monthly Salary Breakdown</div>
+                    <div class="flex justify-between"><span>Basic Salary:</span> <strong class="text-white" id="profile-modal-basic">₹0</strong></div>
+                    <div class="flex justify-between"><span>Allowances:</span> <strong class="text-emerald-400" id="profile-modal-allowances">+₹0</strong></div>
+                    <div class="flex justify-between"><span>Deductions:</span> <strong class="text-red-400" id="profile-modal-deductions">-₹0</strong></div>
+                </div>
+
+                <div>
+                    <div class="text-slate-400 font-semibold mb-2">Assigned Tasks</div>
+                    <div id="profile-modal-tasks-list" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        <!-- Dynamic task cards -->
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6 pt-4 border-t border-darkBorder">
+                <button onclick="toggleProfileModal(false)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-lg font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: ASSIGN WORK / CREATE TASK ===================== -->
     <div id="task-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="bg-darkCard border border-darkBorder w-full max-w-md p-6 rounded-2xl">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h4 class="font-outfit font-bold text-white text-base">Assign Task</h4>
+                <div>
+                    <h4 class="font-outfit font-bold text-white text-base">Assign Work / Task</h4>
+                    <p class="text-xs text-slate-400 mt-0.5">Assign tasks to registered employees with deadlines and subtask checklists.</p>
+                </div>
                 <button onclick="toggleTaskModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
             </div>
             <form id="create-task-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs text-slate-400 font-semibold mb-1">Task Title</label>
-                    <input type="text" id="task-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" placeholder="e.g. Design Dashboard Prototypes" required>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Work Title *</label>
+                    <input type="text" id="task-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. Implement API Endpoint Authentication" required>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 font-semibold mb-1">Assigned To (Emp ID)</label>
-                    <input type="text" id="task-assignee" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" placeholder="e.g. KC-EMP-103" required>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Work Description / Instructions</label>
+                    <textarea id="task-desc" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="Provide detailed steps or instructions for the employee..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Assign To Employee *</label>
+                    <select id="task-assignee-select" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                        <option value="">-- Select Employee --</option>
+                    </select>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Priority</label>
-                        <select id="task-priority" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs">
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Priority Level</label>
+                        <select id="task-priority" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
+                            <option value="Urgent">Urgent 🔥</option>
+                            <option value="High" selected>High ⚡</option>
+                            <option value="Medium">Medium 🔹</option>
+                            <option value="Low">Low 🟢</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-semibold mb-1">Deadline Date</label>
-                        <input type="date" id="task-deadline" class="w-full bg-slate-900 border border-darkBorder text-white p-2 rounded-lg text-xs" required>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Deadline Date *</label>
+                        <input type="date" id="task-deadline" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="toggleTaskModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Create Task</button>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Checklist Subtasks (One per line)</label>
+                    <textarea id="task-checklist-input" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g.&#10;Write unit tests&#10;Update API documentation"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
+                    <button type="button" onclick="toggleTaskModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Assign Work &rarr;</button>
                 </div>
             </form>
         </div>
@@ -1293,6 +1555,265 @@
             }
         }
     </style>
+
+    <!-- ===================== MODAL: CLIENT CRM PROFILE ===================== -->
+    <div id="client-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <h4 class="font-outfit font-bold text-white text-base">Register Client Profile</h4>
+                <button onclick="toggleClientModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-client-form" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Contact Person Name *</label>
+                        <input type="text" id="cli-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. Vikram Mehta" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Company / Org Name *</label>
+                        <input type="text" id="cli-company" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. Apex Global Solutions" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Email Address *</label>
+                        <input type="email" id="cli-email" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="vikram@apex.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Phone Number</label>
+                        <input type="tel" id="cli-phone" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="+91 98765 43210">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Client Tier / Tag</label>
+                        <select id="cli-tag" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
+                            <option value="VIP">VIP Retainer</option>
+                            <option value="Enterprise">Enterprise</option>
+                            <option value="Academic">Academic / Research</option>
+                            <option value="SMB">SMB Client</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Initial Billed Amount (₹)</label>
+                        <input type="number" id="cli-spent" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" value="0">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Notes &amp; Contract Scope</label>
+                    <textarea id="cli-notes" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="Add retainer notes or service requirements..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-darkBorder">
+                    <button type="button" onclick="toggleClientModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Save Client</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: CREATE INVOICE ===================== -->
+    <div id="invoice-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <h4 class="font-outfit font-bold text-white text-base">Generate Client Invoice</h4>
+                <button onclick="toggleInvoiceModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-invoice-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Select Client *</label>
+                    <select id="inv-client-select" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                        <!-- Dynamic options -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Service Category</label>
+                        <select id="inv-service" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
+                            <option value="Digital Engineering & Dev">Digital Engineering &amp; Dev</option>
+                            <option value="AI & Robotics Advisory">AI &amp; Robotics Advisory</option>
+                            <option value="Cloud Architecture">Cloud Architecture</option>
+                            <option value="Academic Mentorship">Academic Mentorship</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Subtotal Amount (₹) *</label>
+                        <input type="number" id="inv-amount" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="50000" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Due Date</label>
+                        <input type="date" id="inv-due-date" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Payment Status</label>
+                        <select id="inv-status" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
+                            <option value="Unpaid">Unpaid / Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Overdue">Overdue</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-darkBorder">
+                    <button type="button" onclick="toggleInvoiceModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Generate Invoice</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: CREATE PROJECT ===================== -->
+    <div id="project-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <h4 class="font-outfit font-bold text-white text-base">Create Consulting Project</h4>
+                <button onclick="toggleProjectModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-project-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Project Title *</label>
+                    <input type="text" id="proj-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g. AI Autonomous Drone Vision Subsystem" required>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Client Name *</label>
+                        <select id="proj-client-select" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                            <!-- Dynamic clients -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Project Budget (₹) *</label>
+                        <input type="number" id="proj-budget" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="120000" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Service Category</label>
+                        <select id="proj-service" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none">
+                            <option value="AI Solutions">AI Solutions</option>
+                            <option value="Robotics Engineering">Robotics Engineering</option>
+                            <option value="Web Development">Web Development</option>
+                            <option value="Cloud Architecture">Cloud Architecture</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Target Deadline</label>
+                        <input type="date" id="proj-deadline" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-darkBorder">
+                    <button type="button" onclick="toggleProjectModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: LOG BILLABLE TIMESHEET ===================== -->
+    <div id="timesheet-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-darkBorder">
+                <h4 class="font-outfit font-bold text-white text-base">Log Billable Consulting Hours</h4>
+                <button onclick="toggleTimesheetModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-timesheet-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Project &amp; Client *</label>
+                    <select id="ts-project-select" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" required>
+                        <!-- Dynamic projects -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Hours Logged *</label>
+                        <input type="number" step="0.5" id="ts-hours" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" value="4.0" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold mb-1">Billable Rate (₹/hr)</label>
+                        <input type="number" id="ts-rate" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" value="1500" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Work Summary / Log Notes *</label>
+                    <textarea id="ts-desc" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="Describe consulting work performed..." required></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-darkBorder">
+                    <button type="button" onclick="toggleTimesheetModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue text-white font-semibold text-xs rounded-lg">Log Timesheet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: PRINTABLE BILLING INVOICE ===================== -->
+    <div id="invoice-printable-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[11000] p-4">
+        <div class="bg-white text-slate-800 w-full max-w-2xl p-8 rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-6 no-print">
+                <h4 class="font-outfit font-bold text-lg text-slate-900">Printable Client Invoice</h4>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="px-4 py-1.5 bg-accentBlue text-white font-semibold text-xs rounded-lg shadow hover:bg-blue-600">Print / Save PDF</button>
+                    <button onclick="toggleInvoicePrintModal(false)" class="px-3 py-1.5 border border-slate-300 text-slate-600 text-xs rounded-lg">Close</button>
+                </div>
+            </div>
+
+            <!-- Letterhead Layout -->
+            <div class="p-6 border border-slate-200 rounded-xl space-y-6 bg-white">
+                <div class="flex justify-between items-start border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="font-outfit font-extrabold text-xl text-slate-900 tracking-tight">KAPATE CONSULTANCY</h2>
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-0.5">Engineering &amp; AI Advisory Services</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Pune, Maharashtra, India | GSTIN: 27AABCK1234F1Z5</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded uppercase" id="inv-pr-status">INVOICE</span>
+                        <p class="text-[11px] text-slate-500 mt-2 font-mono" id="inv-pr-no">INV-2026-1001</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Billed To</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="inv-pr-client">Apex Global Solutions</div>
+                        <div class="text-slate-500 text-[11px]" id="inv-pr-email">vikram@apex.com</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-slate-400 font-semibold uppercase text-[9px] tracking-wider">Issue &amp; Due Date</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="inv-pr-dates">Issue: 2026-08-17 | Due: 2026-09-01</div>
+                    </div>
+                </div>
+
+                <table class="w-full text-xs text-left border-t border-slate-100 mt-4">
+                    <thead>
+                        <tr class="bg-slate-50 text-[10px] uppercase text-slate-500 font-bold border-b border-slate-200">
+                            <th class="p-3">Service Description</th>
+                            <th class="p-3 text-right">Subtotal</th>
+                            <th class="p-3 text-right">GST (18%)</th>
+                            <th class="p-3 text-right">Total Payable</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td class="p-3 font-semibold" id="inv-pr-service">Digital Engineering &amp; Dev</td>
+                            <td class="p-3 text-right font-mono" id="inv-pr-subtotal">₹50,000</td>
+                            <td class="p-3 text-right font-mono" id="inv-pr-gst">₹9,000</td>
+                            <td class="p-3 text-right font-mono font-bold text-slate-900" id="inv-pr-total">₹59,000</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="flex justify-between items-end pt-6 border-t border-slate-100 text-[10px] text-slate-400">
+                    <div>
+                        <p>Bank: HDFC Bank | A/C: 50200084211749 | IFSC: HDFC0000123</p>
+                        <p class="font-mono">Thank you for partnering with Kapate Consultancy.</p>
+                    </div>
+                    <div class="text-center no-print">
+                        <div class="w-20 h-10 border-b border-dashed border-slate-300 mx-auto flex items-end justify-center pb-1 font-mono text-[9px] text-slate-400">Shon Kapate</div>
+                        <p class="font-bold text-slate-600 mt-1 uppercase text-[8px] tracking-widest">Authorized Signatory</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Script Resource -->
     <script src="erp.js"></script>

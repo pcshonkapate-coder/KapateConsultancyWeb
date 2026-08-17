@@ -16,12 +16,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- PWA & Mobile Web App Meta -->
+  <!-- Favicons for Google Search Results & Browsers -->
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#090d16">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="assets/Kapate-Consultancy-Logo.png">
 
   <link rel="stylesheet" href="style.css">
 
@@ -513,6 +517,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Terms of Service
       </button>
+      <button class="legal-tab-btn" id="tab-nda" data-panel="nda-panel" aria-selected="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Client NDA &amp; IP Guarantee
+      </button>
     </div>
   </div>
 
@@ -956,7 +964,7 @@
       });
       panels.forEach(panel => panel.classList.toggle('active', panel.id === targetId));
       buildToc(targetId);
-      const tabName = targetId === 'privacy-panel' ? 'privacy' : 'terms';
+      const tabName = targetId === 'privacy-panel' ? 'privacy' : (targetId === 'terms-panel' ? 'terms' : 'nda');
       history.replaceState(null, '', '?tab=' + tabName);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -966,6 +974,7 @@
     // ---- Build Table of Contents ----
     function buildToc(panelId) {
       const panel    = document.getElementById(panelId);
+      if (!panel) return;
       const sections = panel.querySelectorAll('.legal-section');
       const tocList  = document.getElementById('toc-list');
       tocList.innerHTML = '';
@@ -1001,7 +1010,10 @@
 
     // ---- Init from URL param ----
     const urlParams = new URLSearchParams(window.location.search);
-    const initTab   = urlParams.get('tab') === 'terms' ? 'terms-panel' : 'privacy-panel';
+    const paramTab  = urlParams.get('tab');
+    let initTab = 'privacy-panel';
+    if (paramTab === 'terms') initTab = 'terms-panel';
+    if (paramTab === 'nda')   initTab = 'nda-panel';
     switchTab(initTab);
     observeSections();
   </script>
