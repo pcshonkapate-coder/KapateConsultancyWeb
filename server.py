@@ -12,17 +12,30 @@ from twilio.rest import Client
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    return response
+
+@app.route('/<path:path>', methods=['OPTIONS'])
+@app.route('/', methods=['OPTIONS'])
+def handle_options(path=None):
+    return '', 200
+
 # Configuration variables
-CONFIG_FILE = '/tmp/config.json' if os.environ.get('VERCEL') else 'config.json'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = '/tmp/config.json' if os.environ.get('VERCEL') else os.path.join(BASE_DIR, 'config.json')
 AUTH_TOKEN = "Bearer kapate-admin-secure-token-98765"
 
 if os.environ.get('VERCEL'):
     DB_FILE = '/tmp/inquiries.db'
-    if not os.path.exists(DB_FILE) and os.path.exists('inquiries.db'):
+    if not os.path.exists(DB_FILE) and os.path.exists(os.path.join(BASE_DIR, 'inquiries.db')):
         import shutil
-        shutil.copy('inquiries.db', DB_FILE)
+        shutil.copy(os.path.join(BASE_DIR, 'inquiries.db'), DB_FILE)
 else:
-    DB_FILE = 'inquiries.db'
+    DB_FILE = os.path.join(BASE_DIR, 'inquiries.db')
 
 
 def generate_unique_id(prefix):
@@ -49,14 +62,40 @@ def generate_unique_id(prefix):
     }
     
     table = table_map.get(prefix, "activity_logs")
-    count = 101
+    max_id = 100
     try:
-        cursor.execute(f"SELECT COUNT(*) FROM {table}")
-        count += cursor.fetchone()[0]
+        cursor.execute(f"SELECT MAX(id) FROM {table}")
+        row = cursor.fetchone()
+        if row and row[0]:
+            max_id = max(max_id, row[0] + 100)
+        else:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            max_id = 100 + cursor.fetchone()[0]
     except Exception:
         pass
+    
+    target_id = max_id + 1
+    id_col_map = {
+        "KC-EMP": "emp_id",
+        "KC-WT": "token_id",
+        "KC-APP": "approval_id",
+        "KC-INV": "invoice_no"
+    }
+    id_col = id_col_map.get(prefix)
+    if id_col:
+        while True:
+            candidate = f"{prefix}-{target_id:05d}"
+            try:
+                cursor.execute(f"SELECT 1 FROM {table} WHERE {id_col} = ?", (candidate,))
+                if not cursor.fetchone():
+                    conn.close()
+                    return candidate
+                target_id += 1
+            except Exception:
+                conn.close()
+                return candidate
     conn.close()
-    return f"{prefix}-{count:05d}"
+    return f"{prefix}-{target_id:05d}"
 
 
 def audit_log_event(user_name, action, entity, entity_id="", old_val="", new_val="", ip_addr="127.0.0.1"):
@@ -583,6 +622,18 @@ def init_db():
         pass
     try:
         cursor.execute("ALTER TABLE erp_tasks ADD COLUMN github_pr_link TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE work_tokens ADD COLUMN attachment_pdf TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN attachment_pdf TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE employees ADD COLUMN appointment_pdf TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
     conn.commit()
@@ -2147,10 +2198,12 @@ def erp_tasks():
         try:
             cursor = conn.cursor()
             checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
+            attachment_pdf = data.get('attachment_pdf', '').strip()
+            deadline_val = data.get('deadline', '').strip() or str(datetime.date.today() + datetime.timedelta(days=7))
             cursor.execute('''
-                INSERT INTO erp_tasks (title, description, assigned_to, status, priority, deadline, checklist)
-                VALUES (?, ?, ?, 'To Do', ?, ?, ?)
-            ''', (data.get('title'), data.get('description', ''), data.get('assigned_to'), data.get('priority', 'Medium'), data.get('deadline'), checklist_str))
+                INSERT INTO erp_tasks (title, description, assigned_to, status, priority, deadline, checklist, attachment_pdf)
+                VALUES (?, ?, ?, 'To Do', ?, ?, ?, ?)
+            ''', (data.get('title'), data.get('description', ''), data.get('assigned_to'), data.get('priority', 'Medium'), deadline_val, checklist_str, attachment_pdf))
             
             # Notification trigger
             cursor.execute('''
@@ -2452,16 +2505,17 @@ def handle_work_tokens():
             checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
             github_repo = data.get('github_repo', '').strip()
             github_pr_link = data.get('github_pr_link', '').strip()
+            attachment_pdf = data.get('attachment_pdf', '').strip()
             
             cursor.execute('''
-                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist, github_repo, github_pr_link)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist, github_repo, github_pr_link, attachment_pdf)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (token_id, data.get('project_title', 'General Consulting'), data.get('client_name', 'Client'),
                   data.get('milestone_id', ''), data.get('title'), data.get('description', ''),
                   data.get('assigned_by', 'PM'), data.get('assigned_to'), data.get('priority', 'Medium'),
                   float(data.get('estimated_hours', 4.0)), float(data.get('billable_hours', 4.0)),
                   float(data.get('billing_rate', 1500.0)), data.get('deadline', ''),
-                  data.get('status', 'Assigned'), checklist_str, github_repo, github_pr_link))
+                  data.get('status', 'Assigned'), checklist_str, github_repo, github_pr_link, attachment_pdf))
 
             audit_log_event(data.get('assigned_by', 'PM'), "WORK_TOKEN_CREATED", "work_tokens", token_id, "", f"Assigned to {data.get('assigned_to')}: {data.get('title')} (GitHub: {github_repo})")
             conn.commit()

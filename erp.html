@@ -653,6 +653,9 @@
                     <h2 class="font-outfit font-bold text-base sm:text-lg text-white truncate" id="erp-tab-title">ERP Control Center</h2>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button onclick="startEmployeeTour()" class="flex items-center gap-1.5 text-xs bg-accentBlue/20 hover:bg-accentBlue/40 border border-accentBlue/40 text-accentBlue px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer shadow-sm">
+                        <span>🧭</span> Take Portal Tour
+                    </button>
                     <button onclick="openGlobalSearchModal()" class="hidden md:flex items-center gap-2 text-xs bg-slate-900 hover:bg-slate-800 border border-darkBorder text-slate-400 px-3 py-1.5 rounded-lg transition font-mono cursor-pointer">
                         <span>🔍</span> Search (Ctrl + K)
                     </button>
@@ -755,7 +758,7 @@
                 <section id="tab-employees" class="tab-view hidden space-y-6">
                     <div class="flex justify-between items-center">
                         <h3 class="font-outfit font-bold text-base">Corporate Staff Directory</h3>
-                        <button onclick="toggleEmployeeModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Register Employee</button>
+                        <button id="btn-register-employee" onclick="toggleEmployeeModal(true)" class="px-4 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition">+ Register Employee</button>
                     </div>
 
                     <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
@@ -1449,6 +1452,10 @@
                     <label class="block text-xs text-slate-400 font-semibold mb-1">Checklist Subtasks (One per line)</label>
                     <textarea id="task-checklist-input" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none" placeholder="e.g.&#10;Write unit tests&#10;Update API documentation"></textarea>
                 </div>
+                <div>
+                    <label class="block text-xs text-slate-400 font-semibold mb-1">Attachment PDF / Specs Document Link (Optional) 📄</label>
+                    <input type="url" id="task-attachment-pdf" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg text-xs focus:border-accentBlue focus:outline-none font-mono" placeholder="https://example.com/docs/specification.pdf">
+                </div>
                 <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
                     <button type="button" onclick="toggleTaskModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
                     <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Assign Work &rarr;</button>
@@ -2061,7 +2068,11 @@
                 </div>
                 <div>
                     <label class="block text-slate-400 font-semibold mb-1">Target GitHub Project Repository URL 🐙</label>
-                    <input type="url" id="wt-github-repo" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none font-mono" placeholder="https://github.com/kapate-consultancy/drone-vision-ai">
+                    <input type="url" id="wt-github-repo" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none font-mono" placeholder="https://github.com/kapateconsultancy/Civil-Suplier-App">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Attachment PDF / Spec Document Link (Optional) 📄</label>
+                    <input type="url" id="wt-attachment-pdf" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none font-mono" placeholder="https://example.com/docs/task_specifications.pdf">
                 </div>
                 <div>
                     <label class="block text-slate-400 font-semibold mb-1">Checklist Subtasks (One per line)</label>
@@ -2218,6 +2229,150 @@
                     <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Create Repository &rarr;</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: OFFICIAL EMPLOYEE APPOINTMENT & ASSIGNMENT PDF ===================== -->
+    <div id="employee-appointment-pdf-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto custom-scrollbar">
+        <div class="bg-white text-slate-900 w-full max-w-3xl p-8 rounded-2xl shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Actions Bar -->
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4 no-print">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📜</span>
+                    <h4 class="font-outfit font-bold text-slate-900 text-base">Official Employee Appointment &amp; Assignment Letter</h4>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="window.print()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                        <span>🖨️</span> Print / Save PDF
+                    </button>
+                    <button onclick="toggleAppointmentPDFModal(false)" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs rounded-lg font-bold transition cursor-pointer">Close</button>
+                </div>
+            </div>
+
+            <!-- Printable Letterhead Container -->
+            <div class="border border-slate-200 p-8 rounded-xl space-y-6 bg-white font-inter text-slate-800 text-xs">
+                <!-- Header -->
+                <div class="flex justify-between items-start border-b-2 border-slate-900 pb-6">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-7 h-7 rounded bg-slate-900 text-white font-bold font-outfit flex items-center justify-center text-xs">KC</div>
+                            <span class="font-outfit font-extrabold text-slate-900 text-lg tracking-tight">KAPATE CONSULTANCY</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Enterprise Software &amp; Technical Consulting Services</p>
+                        <p class="text-[10px] text-slate-500">Pune HQ &bull; Office Reg. No: KC-MH-2026-HQ</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="inline-block px-3 py-1 bg-slate-100 text-slate-800 font-mono font-bold text-[11px] rounded border border-slate-200" id="app-pdf-ref-id">KC-EMP-APPT-101</div>
+                        <p class="text-[10px] text-slate-400 mt-1" id="app-pdf-date">Date: 2026-08-17</p>
+                    </div>
+                </div>
+
+                <!-- Document Title -->
+                <div class="text-center py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                    <h3 class="font-outfit font-extrabold text-slate-900 text-base uppercase tracking-wide">LETTER OF APPOINTMENT &amp; DUTY ASSIGNMENT</h3>
+                </div>
+
+                <!-- Employee Identity Summary -->
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase font-bold">Employee Full Name</p>
+                        <p class="font-bold text-slate-900 text-sm" id="app-pdf-name">Shon Kapate</p>
+                        <p class="text-[11px] text-slate-600" id="app-pdf-email">office.kapateconsultancy@gmail.com</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 uppercase font-bold">Designation &amp; Department</p>
+                        <p class="font-bold text-slate-900 text-sm" id="app-pdf-role-dept">Senior Software Engineer &bull; Engineering</p>
+                        <p class="text-[11px] text-slate-600" id="app-pdf-emp-id">Employee ID: KC-EMP-101</p>
+                    </div>
+                </div>
+
+                <!-- Compensation & Contract Terms -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider border-b border-slate-200 pb-1">1. Compensation &amp; Employment Package</h4>
+                    <table class="w-full text-left border-collapse border border-slate-200">
+                        <tr class="bg-slate-100 font-semibold text-[11px]">
+                            <th class="p-2 border border-slate-200">Employment Type</th>
+                            <th class="p-2 border border-slate-200">Basic Monthly Pay</th>
+                            <th class="p-2 border border-slate-200">Monthly Allowances</th>
+                            <th class="p-2 border border-slate-200">Statutory Deductions</th>
+                        </tr>
+                        <tr class="text-[11px]">
+                            <td class="p-2 border border-slate-200" id="app-pdf-type">Full-time Regular</td>
+                            <td class="p-2 border border-slate-200 font-bold" id="app-pdf-basic">₹30,000</td>
+                            <td class="p-2 border border-slate-200 text-emerald-700" id="app-pdf-allow">+₹5,000</td>
+                            <td class="p-2 border border-slate-200 text-red-700" id="app-pdf-ded">-₹1,000</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Scope of Duties -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-slate-900 text-xs uppercase tracking-wider border-b border-slate-200 pb-1">2. Core Duties &amp; Operational Directives</h4>
+                    <ul class="list-disc list-inside space-y-1 text-slate-600 text-[11px]">
+                        <li>Maintain duty attendance logging via daily clock-in / check-out in the Enterprise ERP Portal.</li>
+                        <li>Fulfill technical project deliverables, milestone tasks, and pull request submissions assigned under your Employee ID.</li>
+                        <li>Adhere to corporate confidentiality, data security guidelines, and technical code review standards.</li>
+                    </ul>
+                </div>
+
+                <!-- Signatures -->
+                <div class="flex justify-between items-end pt-6 border-t border-slate-200 text-[10px] text-slate-400">
+                    <div>
+                        <p>Kapate Consultancy Corporate HR &amp; Executive Board</p>
+                        <p class="font-mono">Verification Code: KC-VERIFIED-APPT-2026</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-24 h-8 border-b border-dashed border-slate-400 mx-auto flex items-end justify-center pb-1 font-mono text-[9px] text-slate-600">Shon Kapate</div>
+                        <p class="font-bold text-slate-700 mt-1 uppercase text-[8px] tracking-widest">Managing Director &amp; Founder</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: EMPLOYEE ONBOARDING TOUR ===================== -->
+    <div id="employee-tour-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+            <!-- Top Gradient Accent line -->
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-accentBlue via-accentCyan to-indigo-500"></div>
+
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div id="tour-step-icon" class="w-12 h-12 rounded-2xl bg-accentBlue/20 border border-accentBlue/40 text-accentBlue flex items-center justify-center text-2xl shadow-lg">
+                        🚀
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-bold text-accentCyan uppercase tracking-widest" id="tour-step-badge">Step 1 of 5 • Welcome Tour</div>
+                        <h3 class="font-outfit font-extrabold text-white text-lg sm:text-xl" id="tour-title">Welcome to Kapate ERP!</h3>
+                    </div>
+                </div>
+                <button onclick="endEmployeeTour()" class="text-slate-400 hover:text-white text-xl p-1 font-bold">&times;</button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="my-5 min-h-[140px] text-xs text-slate-300 space-y-3 leading-relaxed" id="tour-content-body">
+                <!-- Step content dynamically rendered -->
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden mb-6 border border-darkBorder">
+                <div id="tour-progress-bar" class="bg-gradient-to-r from-accentBlue to-accentCyan h-full transition-all duration-300" style="width: 20%;"></div>
+            </div>
+
+            <!-- Navigation Controls -->
+            <div class="flex items-center justify-between pt-4 border-t border-darkBorder">
+                <button onclick="endEmployeeTour()" class="text-slate-400 hover:text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                    Skip Tour
+                </button>
+                <div class="flex items-center gap-2">
+                    <button id="tour-btn-prev" onclick="prevTourStep()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition disabled:opacity-30 disabled:cursor-not-allowed">
+                        &larr; Back
+                    </button>
+                    <button id="tour-btn-next" onclick="nextTourStep()" class="px-5 py-2 bg-gradient-to-r from-accentBlue to-accentCyan hover:opacity-90 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-accentBlue/20">
+                        Next &rarr;
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

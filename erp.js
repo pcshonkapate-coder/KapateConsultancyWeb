@@ -2,7 +2,8 @@
 // CORPORATE ERP & HRMS CLIENT LOGIC (Kapate Consultancy)
 // ==========================================================================
 
-const API_ERP = '/api/erp';
+const API_BASE_URL = (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '8080')) ? 'http://127.0.0.1:8080' : '';
+const API_ERP = API_BASE_URL + '/api/erp';
 const AUTH_TOKEN = "Bearer kapate-admin-secure-token-98765";
 
 let currentRole = 'Admin';
@@ -54,6 +55,9 @@ function initAuth() {
         erpLayout.classList.remove('hidden');
         setupRoleAccess(savedName || 'Staff Member');
         loadAllERPData();
+        
+        // Auto launch Onboarding Tour on each login / session restore
+        setTimeout(() => startEmployeeTour(), 600);
     }
 
     // Tab Switchers
@@ -86,7 +90,7 @@ function initAuth() {
         const password = document.getElementById('li-password') ? document.getElementById('li-password').value.trim() : '';
 
         try {
-            const res = await fetch('/api/erp/auth/login', {
+            const res = await fetch(`${API_ERP}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -105,6 +109,9 @@ function initAuth() {
                 erpLayout.classList.remove('hidden');
                 setupRoleAccess(data.name);
                 loadAllERPData();
+
+                // Launch Onboarding Tour on each login
+                setTimeout(() => startEmployeeTour(), 600);
             } else {
                 alertBox.className = 'auth-alert error';
                 alertBox.textContent = data.error || 'Invalid credentials.';
@@ -186,6 +193,9 @@ function initAuth() {
 
                 setupRoleAccess(data.name);
                 loadAllERPData();
+
+                // Launch Onboarding Tour on each login
+                setTimeout(() => startEmployeeTour(), 600);
             } else {
                 otpAlert.textContent   = data.error || "Verification failed. Invalid code.";
                 otpAlert.style.display = 'block';
@@ -251,24 +261,192 @@ function closeOtp() {
 
 function setupRoleAccess(userName) {
     document.getElementById('user-display-role').textContent = currentRole;
-    document.getElementById('user-initials').textContent = currentRole.substring(0, 2).toUpperCase();
+    document.getElementById('user-initials').textContent = currentRole ? currentRole.substring(0, 2).toUpperCase() : 'SK';
 
     // Set name dynamically
     document.getElementById('user-display-name').textContent = userName || 'Staff Member';
 
-    // Role restrictions
+    const isAdminOrHR = (currentRole === 'Admin' || currentRole === 'HR' || currentRole === 'CEO');
+
+    // Role restrictions for navigation
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
         const tab = btn.getAttribute('data-tab');
         
-        // Developer & Intern restrict access
-        if (currentRole === 'Intern' || currentRole === 'Developer') {
-            if (['tab-payroll', 'tab-finance', 'tab-recruitments'].includes(tab)) {
+        // Employee, Developer & Intern restricted tabs
+        if (!isAdminOrHR) {
+            if (['tab-payroll', 'tab-finance', 'tab-recruitments', 'tab-executive', 'tab-approvals', 'tab-audit-logs'].includes(tab)) {
                 btn.classList.add('pointer-events-none', 'opacity-30');
+            } else {
+                btn.classList.remove('pointer-events-none', 'opacity-30');
             }
+        } else {
+            btn.classList.remove('pointer-events-none', 'opacity-30');
         }
     });
+
+    // Hide "+ Register Employee" button for non-admin employee roles
+    const regEmpBtn = document.getElementById('btn-register-employee');
+    if (regEmpBtn) {
+        if (isAdminOrHR) {
+            regEmpBtn.classList.remove('hidden');
+        } else {
+            regEmpBtn.classList.add('hidden');
+        }
+    }
+
+    // Auto-prefill Employee ID input for Leave Application form
+    const leaveEmpInput = document.getElementById('leave-emp-id');
+    if (leaveEmpInput && currentEmpId) {
+        leaveEmpInput.value = currentEmpId;
+        if (!isAdminOrHR) leaveEmpInput.readOnly = true;
+    }
 }
+
+
+// --------------------------------------------------------------------------
+// EMPLOYEE ONBOARDING TOUR SYSTEM
+// --------------------------------------------------------------------------
+let currentTourStep = 0;
+const tourSteps = [
+    {
+        icon: '🚀',
+        badge: 'Step 1 of 5 • Welcome & Profile',
+        title: 'Welcome to Kapate ERP!',
+        body: `
+            <p>Hello <strong class="text-white">${localStorage.getItem('kc_erp_name') || 'Team Member'}</strong>! Welcome to your official Kapate Consultancy ERP workspace.</p>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-darkBorder font-mono text-[11px] space-y-1">
+                <div><span class="text-slate-500">Employee ID:</span> <span class="text-accentBlue font-bold">${localStorage.getItem('kc_erp_id') || currentEmpId || 'KC-EMP-101'}</span></div>
+                <div><span class="text-slate-500">System Role:</span> <span class="text-cyan-400 font-bold">${localStorage.getItem('kc_erp_role') || currentRole || 'Employee'}</span></div>
+            </div>
+            <p class="text-slate-400">This tour will quickly guide you through tracking duty hours, managing assigned tasks, receiving work tokens, and applying for leave.</p>
+        `
+    },
+    {
+        icon: '⏱️',
+        badge: 'Step 2 of 5 • Duty Attendance',
+        title: 'Daily Duty Clock-In & Check Out',
+        body: `
+            <p>Log your daily duty hours seamlessly from the <strong>Attendance Clock</strong> portal.</p>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-darkBorder text-slate-300 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-400">✓</span> <span>Click <strong>⏱️ Clock In / Check Out</strong> to record shift start and end times.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-400">✓</span> <span>Total duty hours calculate and sync to HQ automatically.</span>
+                </div>
+            </div>
+        `
+    },
+    {
+        icon: '📋',
+        badge: 'Step 3 of 5 • Developer Kanban',
+        title: 'Kanban Tasks & Subtask Checklists',
+        body: `
+            <p>Track project tasks assigned to you on the <strong>Task Kanban</strong> board.</p>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-darkBorder text-slate-300 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-cyan-400">✓</span> <span>Update status using task card dropdowns (To Do &rarr; In Progress &rarr; QA &rarr; Done).</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-cyan-400">✓</span> <span>Click any card to open subtask checklists and mark items complete.</span>
+                </div>
+            </div>
+        `
+    },
+    {
+        icon: '🎟️',
+        badge: 'Step 4 of 5 • Work Tokens & GitHub',
+        title: 'Work Tokens & GitHub Deliverables',
+        body: `
+            <p>Receive formal project scope tokens under <strong>Work Tokens (KC-WT)</strong>.</p>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-darkBorder text-slate-300 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-indigo-400">✓</span> <span>Click <strong>📄 Task PDF Brief</strong> to inspect technical requirements and git branch instructions.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-indigo-400">✓</span> <span>When completing tasks, submit your <strong>GitHub Pull Request (PR) Link</strong>.</span>
+                </div>
+            </div>
+        `
+    },
+    {
+        icon: '🌴',
+        badge: 'Step 5 of 5 • Leave & Payslips',
+        title: 'Leave Applications & Salary Payslips',
+        body: `
+            <p>Apply for time off and view your digital salary slips anytime.</p>
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-darkBorder text-slate-300 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-400">✓</span> <span>Submit leave applications under <strong>Leave Portal</strong> with auto-filled Emp ID.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-400">✓</span> <span>View &amp; print monthly payslips under <strong>Payroll &amp; Payslips</strong>.</span>
+                </div>
+            </div>
+        `
+    }
+];
+
+function startEmployeeTour() {
+    currentTourStep = 0;
+    renderTourStep();
+    const modal = document.getElementById('employee-tour-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderTourStep() {
+    const step = tourSteps[currentTourStep];
+    if (!step) return;
+    
+    const iconEl = document.getElementById('tour-step-icon');
+    const badgeEl = document.getElementById('tour-step-badge');
+    const titleEl = document.getElementById('tour-title');
+    const bodyEl = document.getElementById('tour-content-body');
+    const barEl = document.getElementById('tour-progress-bar');
+    
+    if (iconEl) iconEl.textContent = step.icon;
+    if (badgeEl) badgeEl.textContent = step.badge;
+    if (titleEl) titleEl.textContent = step.title;
+    if (bodyEl) bodyEl.innerHTML = step.body;
+    
+    const progress = Math.round(((currentTourStep + 1) / tourSteps.length) * 100);
+    if (barEl) barEl.style.width = `${progress}%`;
+    
+    const prevBtn = document.getElementById('tour-btn-prev');
+    const nextBtn = document.getElementById('tour-btn-next');
+    
+    if (prevBtn) prevBtn.disabled = (currentTourStep === 0);
+    if (nextBtn) {
+        if (currentTourStep === tourSteps.length - 1) {
+            nextBtn.textContent = 'Finish Tour 🎉';
+        } else {
+            nextBtn.textContent = 'Next →';
+        }
+    }
+}
+
+function nextTourStep() {
+    if (currentTourStep < tourSteps.length - 1) {
+        currentTourStep++;
+        renderTourStep();
+    } else {
+        endEmployeeTour();
+    }
+}
+
+function prevTourStep() {
+    if (currentTourStep > 0) {
+        currentTourStep--;
+        renderTourStep();
+    }
+}
+
+function endEmployeeTour() {
+    const modal = document.getElementById('employee-tour-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
 
 // --------------------------------------------------------------------------
 // 2. SPA NAVIGATION
@@ -474,6 +652,7 @@ async function fetchEmployees() {
                 <td class="p-4">
                     <div class="flex items-center gap-3">
                         <button onclick="openEmployeeProfile('${emp.emp_id}')" class="text-xs text-accentCyan hover:text-cyan-300 font-semibold">Profile</button>
+                        <button onclick="openEmployeeAppointmentPDF('${emp.emp_id}')" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold">📜 Letter PDF</button>
                         <button onclick="deleteEmployee(${emp.id})" class="text-xs text-red-400 hover:text-red-300">Remove</button>
                     </div>
                 </td>
@@ -483,6 +662,32 @@ async function fetchEmployees() {
     } catch (err) {
         console.error("Fetch employees error:", err);
     }
+}
+
+function toggleAppointmentPDFModal(show) {
+    const modal = document.getElementById('employee-appointment-pdf-modal');
+    if (modal) modal.classList.toggle('hidden', !show);
+}
+
+function openEmployeeAppointmentPDF(empId) {
+    const emp = (window.allEmployees || []).find(e => e.emp_id === empId);
+    if (!emp) {
+        alert("Employee record not found.");
+        return;
+    }
+    
+    document.getElementById('app-pdf-ref-id').textContent = `KC-APPT-${emp.emp_id}`;
+    document.getElementById('app-pdf-date').textContent = `Date: ${emp.join_date || new Date().toISOString().substring(0, 10)}`;
+    document.getElementById('app-pdf-name').textContent = emp.name;
+    document.getElementById('app-pdf-email').textContent = emp.email;
+    document.getElementById('app-pdf-role-dept').textContent = `${emp.role} • ${emp.department}`;
+    document.getElementById('app-pdf-emp-id').textContent = `Employee ID: ${emp.emp_id}`;
+    document.getElementById('app-pdf-type').textContent = emp.employment_type || 'Full-time Regular';
+    document.getElementById('app-pdf-basic').textContent = `₹${(emp.basic_pay || 30000).toLocaleString('en-IN')}`;
+    document.getElementById('app-pdf-allow').textContent = `+₹${(emp.allowances || 5000).toLocaleString('en-IN')}`;
+    document.getElementById('app-pdf-ded').textContent = `-₹${(emp.deductions || 1000).toLocaleString('en-IN')}`;
+
+    toggleAppointmentPDFModal(true);
 }
 
 function populateAssigneeSelect(employees) {
@@ -778,6 +983,7 @@ async function fetchTasks() {
                 </div>
 
                 ${t.description ? `<p class="text-[11px] text-slate-400 line-clamp-2">${t.description}</p>` : ''}
+                ${t.attachment_pdf ? `<div class="pt-1"><a href="${t.attachment_pdf}" target="_blank" class="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-mono">📄 Attached Spec PDF</a></div>` : ''}
                 
                 ${totalItems > 0 ? `
                 <div class="space-y-1 py-1">
@@ -1000,7 +1206,8 @@ function initForms() {
             assigned_to: assignedToVal,
             priority: document.getElementById('task-priority').value,
             deadline: document.getElementById('task-deadline').value,
-            checklist: checklist
+            checklist: checklist,
+            attachment_pdf: document.getElementById('task-attachment-pdf') ? document.getElementById('task-attachment-pdf').value.trim() : ''
         };
 
         try {
@@ -1980,10 +2187,11 @@ function renderWorkTokensTable(tokens) {
         tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40';
         const repoLink = tk.github_repo ? `<a href="${tk.github_repo}" target="_blank" class="text-[10px] text-cyan-400 hover:underline flex items-center gap-1 font-mono mt-1">🐙 GitHub Repo</a>` : '';
         const prLink = tk.github_pr_link ? `<a href="${tk.github_pr_link}" target="_blank" class="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-mono mt-1">🔗 View Pull Request</a>` : '';
+        const pdfLink = tk.attachment_pdf ? `<a href="${tk.attachment_pdf}" target="_blank" class="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-mono mt-1">📄 Attached Spec PDF</a>` : '';
         
         tr.innerHTML = `
             <td class="p-4 font-mono font-bold text-accentBlue">${tk.token_id}</td>
-            <td class="p-4"><strong class="text-white">${tk.project_title}</strong><br><span class="text-xs text-slate-400">${tk.client_name}</span>${repoLink}${prLink}</td>
+            <td class="p-4"><strong class="text-white">${tk.project_title}</strong><br><span class="text-xs text-slate-400">${tk.client_name}</span>${repoLink}${prLink}${pdfLink}</td>
             <td class="p-4 text-xs font-semibold text-slate-200">${tk.title}</td>
             <td class="p-4 text-xs text-white">${tk.assigned_to}</td>
             <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded font-bold ${tk.priority === 'Urgent' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}">${tk.priority}</span></td>
@@ -2217,6 +2425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 estimated_hours: parseFloat(document.getElementById('wt-est-hours').value) || 4.0,
                 billing_rate: parseFloat(document.getElementById('wt-rate').value) || 1500,
                 github_repo: document.getElementById('wt-github-repo') ? document.getElementById('wt-github-repo').value.trim() : '',
+                attachment_pdf: document.getElementById('wt-attachment-pdf') ? document.getElementById('wt-attachment-pdf').value.trim() : '',
                 assigned_by: localStorage.getItem('kc_erp_name') || 'PM',
                 checklist: document.getElementById('wt-checklist').value.split('\n').filter(l => l.trim())
             };
