@@ -594,6 +594,9 @@
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-work-tokens">
                     <span>🎟️</span> Work Tokens (KC-WT)
                 </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-github-repos">
+                    <span>🐙</span> GitHub Repositories
+                </a>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-clients">
                     <span>🏢</span> Clients CRM
                 </a>
@@ -1251,6 +1254,39 @@
                             </thead>
                             <tbody id="audit-logs-table-body" class="divide-y divide-darkBorder text-slate-300">
                                 <!-- Dynamic audit rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 18. GITHUB REPOSITORIES MANAGER -->
+                <section id="tab-github-repos" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base flex items-center gap-2">
+                                <span>🐙</span> GitHub Repository Manager (kapateconsultancy)
+                            </h3>
+                            <p class="text-xs text-slate-400">Manage project repositories, create new repos under kapateconsultancy, and assign git clone commands to staff.</p>
+                        </div>
+                        <button onclick="toggleGitHubRepoModal(true)" class="bg-accentBlue hover:bg-blue-600 text-white text-xs px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 cursor-pointer shadow-lg shadow-accentBlue/20">
+                            <span>➕</span> Create New GitHub Repo
+                        </button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Repository Name</th>
+                                    <th class="p-4">GitHub URL</th>
+                                    <th class="p-4">Associated Project</th>
+                                    <th class="p-4">Assigned Team / Consultant</th>
+                                    <th class="p-4">Git Clone Command</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="github-repos-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic GitHub repo rows -->
                             </tbody>
                         </table>
                     </div>
@@ -2024,12 +2060,162 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Target GitHub Project Repository URL 🐙</label>
+                    <input type="url" id="wt-github-repo" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none font-mono" placeholder="https://github.com/kapate-consultancy/drone-vision-ai">
+                </div>
+                <div>
                     <label class="block text-slate-400 font-semibold mb-1">Checklist Subtasks (One per line)</label>
                     <textarea id="wt-checklist" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="Write Tensor RT engine wrapper&#10;Run benchmark throughput tests"></textarea>
                 </div>
                 <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
                     <button type="button" onclick="toggleWorkTokenModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
                     <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Issue Token &rarr;</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: TASK ASSIGNMENT PDF BRIEF (PRINTABLE) ===================== -->
+    <div id="task-pdf-printable-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto custom-scrollbar">
+        <div class="bg-white text-slate-900 w-full max-w-3xl p-8 rounded-2xl shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Actions Bar -->
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4 no-print">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📄</span>
+                    <h4 class="font-outfit font-bold text-slate-900 text-base">Official Task Assignment PDF Brief</h4>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="window.print()" class="px-4 py-2 bg-accentBlue hover:bg-blue-700 text-white text-xs rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                        <span>🖨️</span> Print / Save PDF
+                    </button>
+                    <button onclick="toggleTaskPDFModal(false)" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs rounded-lg font-bold transition cursor-pointer">Close</button>
+                </div>
+            </div>
+
+            <!-- Letterhead Container -->
+            <div class="border border-slate-200 p-8 rounded-xl space-y-6 bg-white font-inter">
+                <!-- Header -->
+                <div class="flex justify-between items-start border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="font-outfit font-extrabold text-2xl text-slate-900 tracking-tight">KAPATE CONSULTANCY</h2>
+                        <p class="text-[11px] text-slate-500 uppercase tracking-widest font-semibold mt-0.5">Software Engineering, AI &amp; Robotics Advisory</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Pune, Maharashtra, India | office.kapateconsultancy@gmail.com</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-3 py-1 bg-blue-50 text-accentBlue font-bold text-xs rounded uppercase border border-blue-200" id="task-pdf-status">ASSIGNMENT BRIEF</span>
+                        <p class="text-xs text-slate-600 mt-2 font-mono font-bold" id="task-pdf-id">KC-WT-00101</p>
+                    </div>
+                </div>
+
+                <!-- Assignment Metadata -->
+                <div class="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                    <div>
+                        <div class="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Assignee Staff</div>
+                        <div class="font-extrabold text-slate-900 text-sm mt-0.5" id="task-pdf-assignee">Shon Kapate</div>
+                        <div class="text-slate-500 mt-0.5" id="task-pdf-project">Project: Autonomous Drone Vision</div>
+                        <div class="text-slate-500" id="task-pdf-client">Client: Apex Global Solutions</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Assignment Spec</div>
+                        <div class="font-bold text-slate-800 mt-0.5" id="task-pdf-priority">Priority: High ⚡</div>
+                        <div class="text-slate-600 mt-0.5" id="task-pdf-deadline">Deadline: 2026-08-30</div>
+                        <div class="text-slate-500" id="task-pdf-hours">Est. Hours: 6.0 hrs @ ₹2,000/hr</div>
+                    </div>
+                </div>
+
+                <!-- Task Title & Description -->
+                <div>
+                    <h3 class="font-outfit font-bold text-base text-slate-900 mb-1" id="task-pdf-title">Implement PyTorch CUDA Kernel Inference Optimization</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100" id="task-pdf-desc">Target work scope and instructions assigned to consultant.</p>
+                </div>
+
+                <!-- Subtask Checklist -->
+                <div>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">Checklist &amp; Work Deliverables</h4>
+                    <ul class="space-y-1.5 text-xs text-slate-700 list-disc list-inside bg-slate-50 p-3 rounded-lg border border-slate-100" id="task-pdf-checklist">
+                        <li>Requirements analysis &amp; schema design</li>
+                        <li>Implementation and benchmark testing</li>
+                    </ul>
+                </div>
+
+                <!-- GitHub Submission Guidelines -->
+                <div class="p-4 bg-slate-900 text-slate-200 rounded-xl space-y-2 border border-slate-800 text-xs">
+                    <div class="flex items-center gap-2 font-bold text-accentBlue">
+                        <span>🐙</span> GitHub Repository Code Submission Guidelines
+                    </div>
+                    <div>
+                        <span class="text-slate-400">Target Repository:</span>
+                        <a id="task-pdf-github-repo" href="#" target="_blank" class="font-mono text-cyan-400 underline font-bold ml-1">https://github.com/kapate-consultancy/drone-vision-ai</a>
+                    </div>
+                    <div class="space-y-1 text-[11px] text-slate-300 font-mono bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <p class="text-slate-400">// Step 1: Clone Target Repository</p>
+                        <p class="text-emerald-400">git clone &lt;Target_Repository_URL&gt;</p>
+                        <p class="text-slate-400 mt-1">// Step 2: Create Feature Branch for Task</p>
+                        <p class="text-emerald-400">git checkout -b feature/<span id="task-pdf-git-branch">KC-WT-00101</span>-implementation</p>
+                        <p class="text-slate-400 mt-1">// Step 3: Commit &amp; Push Deliverables</p>
+                        <p class="text-emerald-400">git commit -m "feat(<span id="task-pdf-git-commit">KC-WT-00101</span>): complete task deliverables"</p>
+                        <p class="text-emerald-400">git push origin feature/<span id="task-pdf-git-push">KC-WT-00101</span>-implementation</p>
+                        <p class="text-slate-400 mt-1">// Step 4: Open Pull Request on GitHub and submit PR Link in ERP Portal</p>
+                    </div>
+                </div>
+
+                <!-- Signatures -->
+                <div class="flex justify-between items-end pt-6 border-t border-slate-200 text-[10px] text-slate-400">
+                    <div>
+                        <p>Kapate Consultancy Internal Work Management System</p>
+                        <p class="font-mono">Document Security Code: KC-SEC-WT-2026-AUT</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-24 h-8 border-b border-dashed border-slate-300 mx-auto flex items-end justify-center pb-1 font-mono text-[9px] text-slate-500">Shon Kapate</div>
+                        <p class="font-bold text-slate-600 mt-1 uppercase text-[8px] tracking-widest">Project Director Signature</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: CREATE NEW GITHUB REPOSITORY ===================== -->
+    <div id="create-github-repo-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h4 class="font-outfit font-bold text-white text-base flex items-center gap-2">
+                        <span>🐙</span> Create New GitHub Repository
+                    </h4>
+                    <p class="text-xs text-slate-400 mt-0.5">Register or initialize a project repository under kapateconsultancy.</p>
+                </div>
+                <button onclick="toggleGitHubRepoModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-github-repo-form" class="space-y-4 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Repository Name * (e.g. Civil-Suplier-App)</label>
+                    <input type="text" id="gh-repo-name" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none font-mono" placeholder="e.g. Civil-Suplier-App" required>
+                    <div class="text-[10px] text-slate-500 mt-1">Repository URL will be: <span class="font-mono text-cyan-400">https://github.com/kapateconsultancy/&lt;name&gt;</span></div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Associated Project Title</label>
+                    <input type="text" id="gh-project-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. Civil Supplier Management System">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Assigned Team / Consultant</label>
+                        <input type="text" id="gh-assignee" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. Engineering Team">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Visibility</label>
+                        <select id="gh-visibility" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none">
+                            <option value="0" selected>Public (Open Source)</option>
+                            <option value="1">Private (Internal Only)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Repository Description</label>
+                    <textarea id="gh-description" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="Target scope and description for project repository..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
+                    <button type="button" onclick="toggleGitHubRepoModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Create Repository &rarr;</button>
                 </div>
             </form>
         </div>

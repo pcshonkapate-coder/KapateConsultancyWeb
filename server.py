@@ -431,6 +431,21 @@ def init_db():
     ''')
     conn.commit()
 
+    # GitHub Repositories Manager table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS github_repos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            repo_name TEXT UNIQUE NOT NULL,
+            repo_url TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '',
+            project_title TEXT DEFAULT '',
+            assigned_to TEXT DEFAULT '',
+            is_private INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
     # Opportunities table (CRM)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS opportunities (
@@ -542,7 +557,6 @@ def init_db():
     ''')
     conn.commit()
 
-    # Migration: Add checklist and description columns if table already existed without them
     try:
         cursor.execute("ALTER TABLE erp_tasks ADD COLUMN checklist TEXT DEFAULT '[]'")
     except sqlite3.OperationalError:
@@ -553,6 +567,22 @@ def init_db():
         pass
     try:
         cursor.execute("ALTER TABLE employees ADD COLUMN password TEXT DEFAULT 'Kapate@123'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE work_tokens ADD COLUMN github_repo TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE work_tokens ADD COLUMN github_pr_link TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN github_repo TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN github_pr_link TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
     conn.commit()
@@ -2420,18 +2450,20 @@ def handle_work_tokens():
             cursor = conn.cursor()
             token_id = generate_unique_id('KC-WT')
             checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
+            github_repo = data.get('github_repo', '').strip()
+            github_pr_link = data.get('github_pr_link', '').strip()
             
             cursor.execute('''
-                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist, github_repo, github_pr_link)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (token_id, data.get('project_title', 'General Consulting'), data.get('client_name', 'Client'),
                   data.get('milestone_id', ''), data.get('title'), data.get('description', ''),
                   data.get('assigned_by', 'PM'), data.get('assigned_to'), data.get('priority', 'Medium'),
                   float(data.get('estimated_hours', 4.0)), float(data.get('billable_hours', 4.0)),
                   float(data.get('billing_rate', 1500.0)), data.get('deadline', ''),
-                  data.get('status', 'Assigned'), checklist_str))
+                  data.get('status', 'Assigned'), checklist_str, github_repo, github_pr_link))
 
-            audit_log_event(data.get('assigned_by', 'PM'), "WORK_TOKEN_CREATED", "work_tokens", token_id, "", f"Assigned to {data.get('assigned_to')}: {data.get('title')}")
+            audit_log_event(data.get('assigned_by', 'PM'), "WORK_TOKEN_CREATED", "work_tokens", token_id, "", f"Assigned to {data.get('assigned_to')}: {data.get('title')} (GitHub: {github_repo})")
             conn.commit()
             conn.close()
             return jsonify({"success": True, "token_id": token_id, "message": "Work Token created successfully."}), 201
@@ -2448,6 +2480,7 @@ def update_work_token_status(token_db_id):
     data = request.json
     new_status = data.get('status', 'In Progress')
     user_name = data.get('user_name', 'User')
+    github_pr_link = data.get('github_pr_link', '').strip()
 
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -2465,7 +2498,11 @@ def update_work_token_status(token_db_id):
             conn.close()
             return jsonify({"error": "Invalid Work Token status value."}), 400
 
-        cursor.execute("UPDATE work_tokens SET status = ? WHERE id = ?", (new_status, token_db_id))
+        if github_pr_link:
+            cursor.execute("UPDATE work_tokens SET status = ?, github_pr_link = ? WHERE id = ?", (new_status, github_pr_link, token_db_id))
+        else:
+            cursor.execute("UPDATE work_tokens SET status = ? WHERE id = ?", (new_status, token_db_id))
+
         conn.commit()
         conn.close()
 
@@ -2589,10 +2626,113 @@ def global_search():
         cursor.execute("SELECT id, invoice_no as code, client_name as label, 'Invoice' as type, status FROM invoices WHERE invoice_no LIKE ? OR client_name LIKE ?", (f"%{q}%", f"%{q}%"))
         for r in cursor.fetchall(): results.append(dict(r))
 
+        # Search GitHub Repos
+        cursor.execute("SELECT id, repo_name as code, project_title as label, 'GitHub Repo' as type, assigned_to as status FROM github_repos WHERE repo_name LIKE ? OR project_title LIKE ?", (f"%{q}%", f"%{q}%"))
+        for r in cursor.fetchall(): results.append(dict(r))
+
         conn.close()
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# --------------------------------------------------------------------------
+# GITHUB REPOSITORY INTEGRATION & MANAGEMENT API
+# --------------------------------------------------------------------------
+
+@app.route('/api/v1/github/repos', methods=['GET', 'POST'])
+def handle_github_repos():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    conn = sqlite3.connect(DB_FILE)
+    if request.method == 'GET':
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM github_repos ORDER BY id DESC")
+        local_repos = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+
+        # Pre-seed default Civil-Suplier-App repo if empty
+        if not local_repos:
+            try:
+                conn = sqlite3.connect(DB_FILE)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR IGNORE INTO github_repos (repo_name, repo_url, description, project_title)
+                    VALUES ('Civil-Suplier-App', 'https://github.com/kapateconsultancy/Civil-Suplier-App', 'Civil Supplier Application & Material Procurement', 'Civil Supplier Management System')
+                ''')
+                conn.commit()
+                cursor.execute("SELECT * FROM github_repos ORDER BY id DESC")
+                local_repos = [dict(r) for r in cursor.fetchall()]
+                conn.close()
+            except Exception:
+                pass
+
+        # Optionally query GitHub API for live user/org repos
+        try:
+            gh_req = urllib.request.Request(
+                "https://api.github.com/users/kapateconsultancy/repos",
+                headers={"User-Agent": "Kapate-ERP-Server"}
+            )
+            with urllib.request.urlopen(gh_req, timeout=3) as response:
+                gh_data = json.loads(response.read().decode())
+                live_repo_names = {r['repo_name'] for r in local_repos}
+                for gr in gh_data:
+                    name = gr.get('name')
+                    if name and name not in live_repo_names:
+                        local_repos.append({
+                            "id": gr.get('id'),
+                            "repo_name": name,
+                            "repo_url": gr.get('html_url', f"https://github.com/kapateconsultancy/{name}"),
+                            "description": gr.get('description', '') or 'GitHub Repository',
+                            "project_title": "GitHub Project",
+                            "assigned_to": "Kapate Engineering Team",
+                            "is_private": 1 if gr.get('private') else 0,
+                            "created_at": gr.get('created_at', '')
+                        })
+        except Exception as e:
+            print(f"Live GitHub API fetch notice: {e}")
+
+        return jsonify(local_repos)
+
+    elif request.method == 'POST':
+        data = request.json
+        if not data or not data.get('repo_name'):
+            return jsonify({"error": "Repository name is required"}), 400
+
+        repo_name = data.get('repo_name').strip().replace(' ', '-')
+        description = data.get('description', '').strip()
+        project_title = data.get('project_title', '').strip() or repo_name
+        assigned_to = data.get('assigned_to', '').strip() or 'Tech Team'
+        is_private = 1 if data.get('is_private') else 0
+        repo_url = f"https://github.com/kapateconsultancy/{repo_name}"
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO github_repos (repo_name, repo_url, description, project_title, assigned_to, is_private)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (repo_name, repo_url, description, project_title, assigned_to, is_private))
+            repo_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+
+            audit_log_event("Admin", "GITHUB_REPO_CREATED", "github_repos", repo_name, "", repo_url)
+
+            return jsonify({
+                "success": True,
+                "id": repo_id,
+                "repo_name": repo_name,
+                "repo_url": repo_url,
+                "clone_cmd": f"git clone {repo_url}.git",
+                "message": f"Repository {repo_name} created successfully under kapateconsultancy."
+            }), 201
+        except sqlite3.IntegrityError:
+            return jsonify({"error": f"Repository '{repo_name}' already exists in registry."}), 400
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 
 # --------------------------------------------------------------------------

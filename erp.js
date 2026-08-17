@@ -393,6 +393,7 @@ function loadAllERPData() {
     fetchWorkTokens();
     fetchApprovals();
     fetchAuditLogs();
+    fetchGitHubRepos();
 }
 
 async function confirmResetDatabase() {
@@ -1966,6 +1967,7 @@ async function fetchWorkTokens() {
 }
 
 function renderWorkTokensTable(tokens) {
+    window.allWorkTokens = tokens || [];
     const tbody = document.getElementById('work-tokens-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -1976,20 +1978,26 @@ function renderWorkTokensTable(tokens) {
     tokens.forEach(tk => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40';
+        const repoLink = tk.github_repo ? `<a href="${tk.github_repo}" target="_blank" class="text-[10px] text-cyan-400 hover:underline flex items-center gap-1 font-mono mt-1">🐙 GitHub Repo</a>` : '';
+        const prLink = tk.github_pr_link ? `<a href="${tk.github_pr_link}" target="_blank" class="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-mono mt-1">🔗 View Pull Request</a>` : '';
+        
         tr.innerHTML = `
             <td class="p-4 font-mono font-bold text-accentBlue">${tk.token_id}</td>
-            <td class="p-4"><strong class="text-white">${tk.project_title}</strong><br><span class="text-xs text-slate-400">${tk.client_name}</span></td>
+            <td class="p-4"><strong class="text-white">${tk.project_title}</strong><br><span class="text-xs text-slate-400">${tk.client_name}</span>${repoLink}${prLink}</td>
             <td class="p-4 text-xs font-semibold text-slate-200">${tk.title}</td>
             <td class="p-4 text-xs text-white">${tk.assigned_to}</td>
             <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded font-bold ${tk.priority === 'Urgent' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}">${tk.priority}</span></td>
             <td class="p-4"><span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">${tk.status}</span></td>
             <td class="p-4 font-mono text-xs text-slate-300">${tk.estimated_hours} hrs @ ₹${tk.billing_rate}/hr</td>
-            <td class="p-4">
-                <select onchange="updateWorkTokenStatus(${tk.id}, this.value)" class="bg-slate-900 border border-darkBorder text-white text-[11px] p-1 rounded focus:outline-none">
+            <td class="p-4 flex flex-col gap-1.5">
+                <button onclick="openTaskPDFModal(${tk.id})" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white text-[10px] rounded font-bold transition flex items-center gap-1 border border-darkBorder cursor-pointer">
+                    <span>📄</span> Task PDF Brief
+                </button>
+                <select onchange="updateWorkTokenStatusPrompt(${tk.id}, this.value)" class="bg-slate-900 border border-darkBorder text-white text-[10px] p-1 rounded focus:outline-none cursor-pointer">
                     <option value="Assigned" ${tk.status === 'Assigned' ? 'selected' : ''}>Assigned</option>
                     <option value="Accepted" ${tk.status === 'Accepted' ? 'selected' : ''}>Accepted</option>
                     <option value="In Progress" ${tk.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                    <option value="Submitted" ${tk.status === 'Submitted' ? 'selected' : ''}>Submitted (QA)</option>
+                    <option value="Submitted" ${tk.status === 'Submitted' ? 'selected' : ''}>Submitted (QA + PR)</option>
                     <option value="Approved" ${tk.status === 'Approved' ? 'selected' : ''}>Approved (QA Passed)</option>
                     <option value="Completed" ${tk.status === 'Completed' ? 'selected' : ''}>Completed</option>
                 </select>
@@ -2004,12 +2012,78 @@ function toggleWorkTokenModal(show) {
     if (modal) modal.classList.toggle('hidden', !show);
 }
 
-async function updateWorkTokenStatus(tokenDbId, newStatus) {
+function toggleTaskPDFModal(show) {
+    const modal = document.getElementById('task-pdf-printable-modal');
+    if (modal) modal.classList.toggle('hidden', !show);
+}
+
+function openTaskPDFModal(tokenDbId) {
+    const tokens = window.allWorkTokens || [];
+    const tk = tokens.find(t => t.id === tokenDbId);
+    if (!tk) {
+        alert("Task record not found.");
+        return;
+    }
+
+    document.getElementById('task-pdf-id').textContent = tk.token_id || 'KC-WT-00101';
+    document.getElementById('task-pdf-status').textContent = tk.status || 'ASSIGNMENT BRIEF';
+    document.getElementById('task-pdf-assignee').textContent = tk.assigned_to || 'Assigned Staff';
+    document.getElementById('task-pdf-project').textContent = `Project: ${tk.project_title || 'General Consulting'}`;
+    document.getElementById('task-pdf-client').textContent = `Client: ${tk.client_name || 'Kapate Client'}`;
+    document.getElementById('task-pdf-priority').textContent = `Priority: ${tk.priority || 'High'} ⚡`;
+    document.getElementById('task-pdf-deadline').textContent = `Deadline: ${tk.deadline || 'Per SLA'}`;
+    document.getElementById('task-pdf-hours').textContent = `Est. Hours: ${tk.estimated_hours || 4.0} hrs @ ₹${(tk.billing_rate || 1500).toLocaleString('en-IN')}/hr`;
+    document.getElementById('task-pdf-title').textContent = tk.title || 'Task Assignment';
+    document.getElementById('task-pdf-desc').textContent = tk.description || 'Target work scope and implementation instructions.';
+
+    // GitHub Repo Links & Commit Guidelines
+    const repoUrl = tk.github_repo || 'https://github.com/kapate-consultancy/project-repo';
+    const repoElement = document.getElementById('task-pdf-github-repo');
+    if (repoElement) {
+        repoElement.textContent = repoUrl;
+        repoElement.href = repoUrl;
+    }
+    
+    const gitCode = (tk.token_id || 'KC-WT-00101').toLowerCase();
+    document.getElementById('task-pdf-git-branch').textContent = gitCode;
+    document.getElementById('task-pdf-git-commit').textContent = tk.token_id || 'KC-WT-00101';
+    document.getElementById('task-pdf-git-push').textContent = gitCode;
+
+    // Subtask Checklist
+    let checklistItems = [];
+    try {
+        checklistItems = typeof tk.checklist === 'string' ? JSON.parse(tk.checklist) : (tk.checklist || []);
+    } catch(e) {
+        checklistItems = [tk.checklist];
+    }
+    const checklistUl = document.getElementById('task-pdf-checklist');
+    if (checklistUl) {
+        checklistUl.innerHTML = (checklistItems && checklistItems.length > 0)
+            ? checklistItems.map(item => `<li>${item}</li>`).join('')
+            : `<li>Complete implementation requirements as specified in project brief.</li><li>Push deliverables to GitHub repository and submit PR link in ERP.</li>`;
+    }
+
+    toggleTaskPDFModal(true);
+}
+
+async function updateWorkTokenStatusPrompt(tokenDbId, newStatus) {
+    let prLink = '';
+    if (newStatus === 'Submitted') {
+        prLink = prompt("Please enter the GitHub Pull Request (PR) or Commit Link for your deliverables:\n(e.g. https://github.com/kapate-consultancy/repo/pull/12)") || '';
+    }
+    updateWorkTokenStatus(tokenDbId, newStatus, prLink);
+}
+
+async function updateWorkTokenStatus(tokenDbId, newStatus, githubPrLink = '') {
     try {
         const res = await fetch(`/api/v1/work-tokens/${tokenDbId}/status`, {
             method: 'PUT',
             headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, user_name: localStorage.getItem('kc_erp_name') || 'Admin' })
+            body: JSON.stringify({
+                status: newStatus,
+                github_pr_link: githubPrLink,
+                user_name: localStorage.getItem('kc_erp_name') || 'Admin'
+            })
         });
         const data = await res.json();
         if (data.success) {
@@ -2142,6 +2216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 priority: document.getElementById('wt-priority').value,
                 estimated_hours: parseFloat(document.getElementById('wt-est-hours').value) || 4.0,
                 billing_rate: parseFloat(document.getElementById('wt-rate').value) || 1500,
+                github_repo: document.getElementById('wt-github-repo') ? document.getElementById('wt-github-repo').value.trim() : '',
                 assigned_by: localStorage.getItem('kc_erp_name') || 'PM',
                 checklist: document.getElementById('wt-checklist').value.split('\n').filter(l => l.trim())
             };
@@ -2163,6 +2238,109 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (err) {
                 alert("Error issuing work token: " + err.message);
+            }
+        });
+    }
+});
+
+
+// ==========================================================================
+// 7. GITHUB REPOSITORY MANAGER (kapateconsultancy)
+// ==========================================================================
+
+async function fetchGitHubRepos() {
+    try {
+        const res = await fetch(`/api/v1/github/repos`, { headers: { 'Authorization': AUTH_TOKEN } });
+        const repos = await res.json();
+        renderGitHubReposTable(repos || []);
+    } catch (err) {
+        console.error("Fetch GitHub repos error:", err);
+    }
+}
+
+function renderGitHubReposTable(repos) {
+    window.allGitHubRepos = repos || [];
+    const tbody = document.getElementById('github-repos-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!repos || repos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 italic">No GitHub repositories registered yet under kapateconsultancy. Click "+ Create New GitHub Repo" to add one.</td></tr>`;
+        return;
+    }
+    repos.forEach(repo => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40';
+        const cloneCmd = `git clone ${repo.repo_url}.git`;
+        tr.innerHTML = `
+            <td class="p-4 font-mono font-bold text-cyan-400">
+                <a href="${repo.repo_url}" target="_blank" class="hover:underline flex items-center gap-1.5">
+                    <span>🐙</span> ${repo.repo_name}
+                </a>
+            </td>
+            <td class="p-4 font-mono text-xs text-slate-400 max-w-xs truncate">${repo.repo_url}</td>
+            <td class="p-4 text-xs font-semibold text-white">${repo.project_title || 'General Project'}</td>
+            <td class="p-4 text-xs text-slate-300">${repo.assigned_to || 'Tech Team'}</td>
+            <td class="p-4 font-mono text-xs text-emerald-400 bg-slate-950/60 p-2 rounded border border-darkBorder flex items-center justify-between gap-2">
+                <span>${cloneCmd}</span>
+                <button onclick="navigator.clipboard.writeText('${cloneCmd}'); alert('Copied git clone command to clipboard!');" class="text-[10px] text-slate-400 hover:text-white bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">Copy</button>
+            </td>
+            <td class="p-4 flex items-center gap-2">
+                <button onclick="issueTokenWithRepo('${repo.repo_name}', '${repo.repo_url}')" class="px-2.5 py-1 bg-accentBlue hover:bg-blue-600 text-white text-[10px] rounded font-bold transition cursor-pointer">
+                    <span>🎟️</span> Issue Token
+                </button>
+                <a href="${repo.repo_url}" target="_blank" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded font-bold transition flex items-center gap-1 border border-darkBorder">
+                    <span>🔗</span> Open GitHub
+                </a>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function toggleGitHubRepoModal(show) {
+    const modal = document.getElementById('create-github-repo-modal');
+    if (modal) modal.classList.toggle('hidden', !show);
+}
+
+function issueTokenWithRepo(repoName, repoUrl) {
+    toggleWorkTokenModal(true);
+    const repoInput = document.getElementById('wt-github-repo');
+    if (repoInput) repoInput.value = repoUrl;
+    const projectInput = document.getElementById('wt-project');
+    if (projectInput) projectInput.value = repoName;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ghForm = document.getElementById('create-github-repo-form');
+    if (ghForm) {
+        ghForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                repo_name: document.getElementById('gh-repo-name').value.trim(),
+                project_title: document.getElementById('gh-project-title').value.trim(),
+                assigned_to: document.getElementById('gh-assignee').value.trim(),
+                description: document.getElementById('gh-description').value.trim(),
+                is_private: parseInt(document.getElementById('gh-visibility').value) || 0
+            };
+
+            try {
+                const res = await fetch(`/api/v1/github/repos`, {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toggleGitHubRepoModal(false);
+                    ghForm.reset();
+                    alert(`✅ Repository ${data.repo_name} created!\nClone command: ${data.clone_cmd}`);
+                    fetchGitHubRepos();
+                    fetchAuditLogs();
+                } else {
+                    alert("Failed to create GitHub repo: " + data.error);
+                }
+            } catch (err) {
+                alert("Error creating GitHub repo: " + err.message);
             }
         });
     }
