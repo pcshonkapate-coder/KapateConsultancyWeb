@@ -11,6 +11,9 @@ config.json
 *.db
 *.log
 
+# Scratch scripts
+scratch/
+
 # IDE & OS files
 .vscode/
 .idea/
