@@ -6,6 +6,7 @@ import datetime
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, request, jsonify, send_from_directory
 from twilio.rest import Client
 
@@ -22,6 +23,72 @@ if os.environ.get('VERCEL'):
         shutil.copy('inquiries.db', DB_FILE)
 else:
     DB_FILE = 'inquiries.db'
+
+
+def generate_unique_id(prefix):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    table_map = {
+        "KC-EMP": "employees",
+        "KC-CLI": "clients",
+        "KC-LEAD": "leads",
+        "KC-OPP": "opportunities",
+        "KC-PRJ": "projects",
+        "KC-MIL": "milestones",
+        "KC-WT": "work_tokens",
+        "KC-CR": "change_requests",
+        "KC-PRO": "proposals",
+        "KC-CON": "contracts",
+        "KC-INV": "invoices",
+        "KC-PAY": "payments",
+        "KC-EXP": "expenses",
+        "KC-TKT": "tickets",
+        "KC-PO": "purchase_orders",
+        "KC-APP": "approvals"
+    }
+    
+    table = table_map.get(prefix, "activity_logs")
+    count = 101
+    try:
+        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        count += cursor.fetchone()[0]
+    except Exception:
+        pass
+    conn.close()
+    return f"{prefix}-{count:05d}"
+
+
+def audit_log_event(user_name, action, entity, entity_id="", old_val="", new_val="", ip_addr="127.0.0.1"):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_name TEXT NOT NULL,
+                action TEXT NOT NULL,
+                entity TEXT NOT NULL,
+                entity_id TEXT DEFAULT '',
+                old_value TEXT DEFAULT '',
+                new_value TEXT DEFAULT '',
+                ip_address TEXT DEFAULT '127.0.0.1',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            INSERT INTO audit_logs (user_name, action, entity, entity_id, old_value, new_value, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_name, action, entity, str(entity_id), str(old_val), str(new_val), ip_addr))
+        
+        cursor.execute('''
+            INSERT INTO activity_logs (user_name, action, details, icon)
+            VALUES (?, ?, ?, 'shield')
+        ''', (user_name, action, f"{entity} #{entity_id} {old_val} -> {new_val}".strip()))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Audit log error: {e}")
 
 
 def load_config():
@@ -320,6 +387,157 @@ def init_db():
             description TEXT DEFAULT '',
             billable_rate REAL DEFAULT 0.0,
             status TEXT DEFAULT 'Approved'
+        )
+    ''')
+    conn.commit()
+
+    # Work Tokens table (KC-WT-00101)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS work_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_id TEXT UNIQUE NOT NULL,
+            project_title TEXT NOT NULL,
+            client_name TEXT DEFAULT '',
+            milestone_id TEXT DEFAULT '',
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            assigned_by TEXT NOT NULL,
+            assigned_to TEXT NOT NULL,
+            priority TEXT DEFAULT 'Medium',
+            estimated_hours REAL DEFAULT 0.0,
+            billable_hours REAL DEFAULT 0.0,
+            billing_rate REAL DEFAULT 1500.0,
+            deadline TEXT DEFAULT '',
+            status TEXT DEFAULT 'Assigned',
+            checklist TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Approvals table (Universal Approval Center)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            approval_id TEXT UNIQUE NOT NULL,
+            type TEXT NOT NULL,
+            requester_name TEXT NOT NULL,
+            amount REAL DEFAULT 0.0,
+            details TEXT DEFAULT '',
+            status TEXT DEFAULT 'Pending',
+            approver_name TEXT DEFAULT 'Pending Review',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Opportunities table (CRM)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS opportunities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            opp_id TEXT UNIQUE NOT NULL,
+            client_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            stage TEXT DEFAULT 'Discovery',
+            value REAL DEFAULT 0.0,
+            close_date TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Proposals table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id TEXT UNIQUE NOT NULL,
+            client_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            scope TEXT DEFAULT '',
+            amount REAL DEFAULT 0.0,
+            tax_gst REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'Sent',
+            valid_until TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Contracts table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contract_id TEXT UNIQUE NOT NULL,
+            client_name TEXT NOT NULL,
+            contract_type TEXT DEFAULT 'Consultancy Agreement',
+            start_date TEXT DEFAULT '',
+            end_date TEXT DEFAULT '',
+            value REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Change Requests table (KC-CR-00101)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS change_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cr_id TEXT UNIQUE NOT NULL,
+            project_title TEXT NOT NULL,
+            client_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            impact_hours REAL DEFAULT 0.0,
+            additional_cost REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'Requested',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Purchase Orders table (KC-PO-00101)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            po_id TEXT UNIQUE NOT NULL,
+            vendor_name TEXT NOT NULL,
+            project_title TEXT DEFAULT '',
+            amount REAL DEFAULT 0.0,
+            status TEXT DEFAULT 'Draft',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Support Tickets table (KC-TKT-00101)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id TEXT UNIQUE NOT NULL,
+            client_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            priority TEXT DEFAULT 'Medium',
+            sla_hours INTEGER DEFAULT 24,
+            status TEXT DEFAULT 'Open',
+            assigned_to TEXT DEFAULT 'Unassigned',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Documents table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doc_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            entity_type TEXT DEFAULT 'Project',
+            entity_id TEXT DEFAULT '',
+            access_level TEXT DEFAULT 'Internal',
+            file_path TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
@@ -1528,25 +1746,24 @@ def erp_manage_employees():
             conn = sqlite3.connect(DB_FILE)
             cursor = conn.cursor()
             
-            # Generate next Employee ID
-            cursor.execute("SELECT COUNT(*) FROM employees")
-            count = cursor.fetchone()[0]
-            emp_id = f"KC-EMP-{101 + count}"
-            
-            password = data.get('password', 'Kapate@123').strip() or 'Kapate@123'
+            emp_id = generate_unique_id('KC-EMP')
+            raw_password = data.get('password', 'Kapate@123').strip() or 'Kapate@123'
+            password_hash = generate_password_hash(raw_password)
+
             cursor.execute('''
                 INSERT INTO employees (emp_id, name, email, password, role, department, employment_type, join_date, basic_pay, allowances, deductions)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (emp_id, data.get('name'), data.get('email'), password, data.get('role', 'Developer'), 
+            ''', (emp_id, data.get('name'), data.get('email'), password_hash, data.get('role', 'Developer'), 
                   data.get('department', 'Engineering'), data.get('employment_type', 'Full-time'),
                   data.get('join_date', str(datetime.date.today())), float(data.get('basic_pay', 30000)),
                   float(data.get('allowances', 5000)), float(data.get('deductions', 1000))))
             
-            cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                           ("Admin", f"Employee Registered", f"Onboarded {data.get('name')} as {emp_id}", "user"))
             conn.commit()
             conn.close()
-            return jsonify({"success": True, "emp_id": emp_id, "password": password}), 201
+
+            audit_log_event("Admin", "EMPLOYEE_CREATED", "employees", emp_id, "", f"Onboarded {data.get('name')} as {emp_id}")
+
+            return jsonify({"success": True, "emp_id": emp_id, "message": "Employee registered successfully."}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -1564,6 +1781,7 @@ def erp_direct_login():
 
     # Check Admin Credentials
     if email == "office.kapateconsultancy@gmail.com" and password == admin_pass:
+        audit_log_event("Admin", "USER_LOGIN", "users", "KC-EMP-101", "", "CEO Admin Logged In")
         return jsonify({
             "success": True,
             "token": "Bearer kapate-admin-secure-token-98765",
@@ -1582,8 +1800,13 @@ def erp_direct_login():
         if not row:
             return jsonify({"success": False, "error": "No employee account registered with this email."}), 404
 
-        emp_id, name, role, stored_pass = row[0], row[1], row[2], row[3]
-        if password == stored_pass or password == admin_pass:
+        emp_id, name, role, stored_hash = row[0], row[1], row[2], row[3]
+        
+        # Verify using secure password hash check (or legacy plaintext fallback for existing test DBs)
+        is_valid = check_password_hash(stored_hash, password) or (password == stored_hash) or (password == admin_pass)
+
+        if is_valid:
+            audit_log_event(name, "USER_LOGIN", "employees", emp_id, "", "User Authenticated")
             return jsonify({
                 "success": True,
                 "token": "Bearer kapate-admin-secure-token-98765",
@@ -1592,6 +1815,7 @@ def erp_direct_login():
                 "role": role
             })
         else:
+            audit_log_event(email, "LOGIN_FAILED", "employees", "", "Failed Login Attempt", "")
             return jsonify({"success": False, "error": "Invalid password credentials."}), 401
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2162,11 +2386,211 @@ def convert_inquiry_to_client(inquiry_id):
         
         # Update inquiry status
         cursor.execute("UPDATE inquiries SET status = 'Converted' WHERE id = ?", (inquiry_id,))
-        cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                       ("Admin", f"Inquiry Converted", f"Converted lead {name} into active CRM client", "user-check"))
+        audit_log_event("Admin", "INQUIRY_CONVERTED", "clients", name, "Pending", "Converted to Active CRM Client")
         conn.commit()
         conn.close()
         return jsonify({"success": True, "message": f"Successfully converted {name} into active client."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# --------------------------------------------------------------------------
+# ENTERPRISE WORK TOKEN SYSTEM (KC-WT-00101), APPROVALS, AUDIT & SEARCH
+# --------------------------------------------------------------------------
+
+@app.route('/api/v1/work-tokens', methods=['GET', 'POST'])
+@app.route('/api/erp/work-tokens', methods=['GET', 'POST'])
+def handle_work_tokens():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    conn = sqlite3.connect(DB_FILE)
+    if request.method == 'GET':
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM work_tokens ORDER BY id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+
+    elif request.method == 'POST':
+        data = request.json
+        try:
+            cursor = conn.cursor()
+            token_id = generate_unique_id('KC-WT')
+            checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
+            
+            cursor.execute('''
+                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (token_id, data.get('project_title', 'General Consulting'), data.get('client_name', 'Client'),
+                  data.get('milestone_id', ''), data.get('title'), data.get('description', ''),
+                  data.get('assigned_by', 'PM'), data.get('assigned_to'), data.get('priority', 'Medium'),
+                  float(data.get('estimated_hours', 4.0)), float(data.get('billable_hours', 4.0)),
+                  float(data.get('billing_rate', 1500.0)), data.get('deadline', ''),
+                  data.get('status', 'Assigned'), checklist_str))
+
+            audit_log_event(data.get('assigned_by', 'PM'), "WORK_TOKEN_CREATED", "work_tokens", token_id, "", f"Assigned to {data.get('assigned_to')}: {data.get('title')}")
+            conn.commit()
+            conn.close()
+            return jsonify({"success": True, "token_id": token_id, "message": "Work Token created successfully."}), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/work-tokens/<int:token_db_id>/status', methods=['PUT'])
+def update_work_token_status(token_db_id):
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    data = request.json
+    new_status = data.get('status', 'In Progress')
+    user_name = data.get('user_name', 'User')
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT token_id, status FROM work_tokens WHERE id = ?", (token_db_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"error": "Work Token not found"}), 404
+
+        token_id, old_status = row[0], row[1]
+        
+        valid_statuses = ['Draft', 'Assigned', 'Accepted', 'In Progress', 'Blocked', 'Submitted', 'QA Review', 'Revision Required', 'Resubmitted', 'Approved', 'Completed', 'Billed', 'Cancelled']
+        if new_status not in valid_statuses:
+            conn.close()
+            return jsonify({"error": "Invalid Work Token status value."}), 400
+
+        cursor.execute("UPDATE work_tokens SET status = ? WHERE id = ?", (new_status, token_db_id))
+        conn.commit()
+        conn.close()
+
+        audit_log_event(user_name, "WORK_TOKEN_STATUS_CHANGE", "work_tokens", token_id, old_status, new_status)
+        return jsonify({"success": True, "message": f"Work token {token_id} moved to {new_status}."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/approvals', methods=['GET', 'POST'])
+def handle_approvals():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    conn = sqlite3.connect(DB_FILE)
+    if request.method == 'GET':
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM approvals ORDER BY id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+
+    elif request.method == 'POST':
+        data = request.json
+        try:
+            cursor = conn.cursor()
+            app_id = generate_unique_id('KC-APP')
+            cursor.execute('''
+                INSERT INTO approvals (approval_id, type, requester_name, amount, details, status)
+                VALUES (?, ?, ?, ?, ?, 'Pending')
+            ''', (app_id, data.get('type', 'Expense'), data.get('requester_name', 'Employee'),
+                  float(data.get('amount', 0.0)), data.get('details', '')))
+
+            audit_log_event(data.get('requester_name', 'Employee'), "APPROVAL_REQUESTED", "approvals", app_id, "", f"Requested approval for {data.get('type')}")
+            conn.commit()
+            conn.close()
+            return jsonify({"success": True, "approval_id": app_id, "message": "Approval request submitted."}), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/approvals/<int:app_db_id>/action', methods=['POST'])
+def approval_action(app_db_id):
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    data = request.json
+    action = data.get('action', 'Approved')
+    approver = data.get('approver_name', 'CEO Admin')
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT approval_id, status FROM approvals WHERE id = ?", (app_db_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"error": "Approval request not found"}), 404
+
+        app_id, old_status = row[0], row[1]
+        cursor.execute("UPDATE approvals SET status = ?, approver_name = ? WHERE id = ?", (action, approver, app_db_id))
+        conn.commit()
+        conn.close()
+
+        audit_log_event(approver, f"APPROVAL_{action.upper()}", "approvals", app_id, old_status, action)
+        return jsonify({"success": True, "message": f"Approval {app_id} marked as {action}."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/audit-logs', methods=['GET'])
+def get_audit_logs():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100")
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/global-search', methods=['GET'])
+def global_search():
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header != "Bearer kapate-admin-secure-token-98765":
+        return jsonify({"error": "Unauthorized Access"}), 401
+
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify([])
+
+    results = []
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Search Work Tokens
+        cursor.execute("SELECT id, token_id as code, title as label, 'Work Token' as type, status FROM work_tokens WHERE token_id LIKE ? OR title LIKE ?", (f"%{q}%", f"%{q}%"))
+        for r in cursor.fetchall(): results.append(dict(r))
+
+        # Search Employees
+        cursor.execute("SELECT id, emp_id as code, name as label, 'Employee' as type, role as status FROM employees WHERE emp_id LIKE ? OR name LIKE ?", (f"%{q}%", f"%{q}%"))
+        for r in cursor.fetchall(): results.append(dict(r))
+
+        # Search Clients
+        cursor.execute("SELECT id, email as code, name as label, 'Client' as type, company as status FROM clients WHERE name LIKE ? OR company LIKE ?", (f"%{q}%", f"%{q}%"))
+        for r in cursor.fetchall(): results.append(dict(r))
+
+        # Search Invoices
+        cursor.execute("SELECT id, invoice_no as code, client_name as label, 'Invoice' as type, status FROM invoices WHERE invoice_no LIKE ? OR client_name LIKE ?", (f"%{q}%", f"%{q}%"))
+        for r in cursor.fetchall(): results.append(dict(r))
+
+        conn.close()
+        return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

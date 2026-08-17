@@ -571,6 +571,9 @@
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer active bg-accentBlue text-white shadow-md shadow-accentBlue/20" data-tab="tab-dashboard">
                     <span>🏡</span> Dashboard
                 </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-executive">
+                    <span>👑</span> Executive Center
+                </a>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-employees">
                     <span>👥</span> Employee Directory
                 </a>
@@ -588,6 +591,9 @@
                 </a>
 
                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Consultancy Operations</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-work-tokens">
+                    <span>🎟️</span> Work Tokens (KC-WT)
+                </a>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-clients">
                     <span>🏢</span> Clients CRM
                 </a>
@@ -604,12 +610,18 @@
                     <span>📬</span> Service Inquiries
                 </a>
 
-                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Finance &amp; Company</div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">Governance &amp; Finance</div>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-approvals">
+                    <span>📥</span> Universal Approvals
+                </a>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-finance">
                     <span>💼</span> Finance Ledger
                 </a>
                 <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-recruitments">
                     <span>👨‍💼</span> HR Recruitment
+                </a>
+                <a class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 text-sm font-medium cursor-pointer" data-tab="tab-audit-logs">
+                    <span>🛡️</span> Security Audit Logs
                 </a>
             </nav>
 
@@ -638,6 +650,9 @@
                     <h2 class="font-outfit font-bold text-base sm:text-lg text-white truncate" id="erp-tab-title">ERP Control Center</h2>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button onclick="openGlobalSearchModal()" class="hidden md:flex items-center gap-2 text-xs bg-slate-900 hover:bg-slate-800 border border-darkBorder text-slate-400 px-3 py-1.5 rounded-lg transition font-mono cursor-pointer">
+                        <span>🔍</span> Search (Ctrl + K)
+                    </button>
                     <button onclick="confirmResetDatabase()" class="flex items-center gap-1.5 text-xs bg-red-950/50 hover:bg-red-900/80 border border-red-500/40 text-red-300 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer shadow-sm">
                         <span>🔄</span> Reset DB to Fresh
                     </button>
@@ -1119,6 +1134,128 @@
                     </div>
                 </section>
 
+                <!-- 14. EXECUTIVE COMMAND CENTER -->
+                <section id="tab-executive" class="tab-view hidden space-y-8">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-lg text-white">Executive Command Center (CEO View)</h3>
+                            <p class="text-xs text-slate-400">High-level enterprise oversight, project health scores, and risk analysis.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-red-400 text-xs font-semibold uppercase tracking-wider mb-2">🔥 Risk Center</div>
+                            <div class="text-2xl font-bold font-outfit text-white">0 Delayed Projects</div>
+                            <div class="text-xs text-slate-400 mt-2">All retainers progressing within SLA boundaries.</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">📈 Overall Project Health</div>
+                            <div class="text-2xl font-bold font-outfit text-emerald-400">98.5% Healthy</div>
+                            <div class="text-xs text-slate-400 mt-2">Based on milestone completion &amp; timesheet billings.</div>
+                        </div>
+                        <div class="bg-darkCard border border-darkBorder p-6 rounded-xl relative overflow-hidden">
+                            <div class="text-accentBlue text-xs font-semibold uppercase tracking-wider mb-2">📥 Pending Approvals</div>
+                            <div class="text-2xl font-bold font-outfit text-white" id="exec-pending-approvals-count">0</div>
+                            <div class="text-xs text-slate-400 mt-2">Requires CEO / Manager sign-off.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 15. WORK TOKENS (KC-WT-00101) -->
+                <section id="tab-work-tokens" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Work Token Management Subsystem (KC-WT-00101)</h3>
+                            <p class="text-xs text-slate-400">Traceable work token assignments, token lifecycles, and QA review verifications.</p>
+                        </div>
+                        <button onclick="toggleWorkTokenModal(true)" class="bg-accentBlue hover:bg-blue-600 text-white text-xs px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 cursor-pointer shadow-lg shadow-accentBlue/20">
+                            <span>➕</span> Issue Work Token
+                        </button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Token ID</th>
+                                    <th class="p-4">Project &amp; Client</th>
+                                    <th class="p-4">Task Title</th>
+                                    <th class="p-4">Assigned To</th>
+                                    <th class="p-4">Priority</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Est. Hours</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="work-tokens-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic Work Token rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 16. UNIVERSAL APPROVAL INBOX -->
+                <section id="tab-approvals" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Universal Approval Inbox</h3>
+                            <p class="text-xs text-slate-400">Review and authorize expenses, leave requests, proposals, and change requests.</p>
+                        </div>
+                        <button onclick="toggleApprovalModal(true)" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-4 py-2 rounded-lg font-semibold transition border border-darkBorder cursor-pointer">
+                            <span>➕</span> Request Approval
+                        </button>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Approval ID</th>
+                                    <th class="p-4">Category</th>
+                                    <th class="p-4">Requester</th>
+                                    <th class="p-4">Amount (₹)</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvals-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 17. SECURITY AUDIT LOGS -->
+                <section id="tab-audit-logs" class="tab-view hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base">Security Audit Logs</h3>
+                            <p class="text-xs text-slate-400">Immutable record of sensitive system operations, logins, and entity updates.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkCard border border-darkBorder rounded-xl overflow-x-auto custom-scrollbar shadow-xl">
+                        <table class="w-full border-collapse text-left text-sm">
+                            <thead class="bg-slate-900/60 border-b border-darkBorder text-xs text-slate-400 uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Timestamp</th>
+                                    <th class="p-4">User</th>
+                                    <th class="p-4">Action</th>
+                                    <th class="p-4">Entity</th>
+                                    <th class="p-4">Entity ID</th>
+                                    <th class="p-4">Old Value</th>
+                                    <th class="p-4">New Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-logs-table-body" class="divide-y divide-darkBorder text-slate-300">
+                                <!-- Dynamic audit rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
             </div>
         </main>
     </div>
@@ -1200,9 +1337,16 @@
             <div class="space-y-4 text-xs text-slate-300">
                 <div class="grid grid-cols-2 gap-3 p-3 bg-slate-900/60 rounded-xl border border-darkBorder">
                     <div><span class="text-slate-500">Employee ID:</span> <strong class="text-white" id="profile-modal-id">KC-EMP-101</strong></div>
-                    <div><span class="text-slate-500">Email:</span> <strong class="text-white" id="profile-modal-email">user@domain.com</strong></div>
-                    <div><span class="text-slate-500">Type:</span> <strong class="text-white" id="profile-modal-type">Full-time</strong></div>
-                    <div><span class="text-slate-500">Account Password:</span> <strong class="text-amber-400 font-mono" id="profile-modal-pass">Kapate@123</strong></div>
+                    <div><span class="text-slate-500">Security Status:</span> <strong class="text-emerald-400 font-mono" id="profile-modal-pass">🔒 Password Hashed (Secured)</strong></div>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-slate-900/60 rounded-xl border border-darkBorder">
+                    <div>
+                        <div class="text-white font-semibold">Account Access Credentials</div>
+                        <div class="text-[11px] text-slate-400">Passwords are PBKDF2/SHA256 encrypted.</div>
+                    </div>
+                    <button onclick="triggerPasswordResetToken()" class="px-3 py-1.5 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 text-[11px] rounded-lg font-semibold transition cursor-pointer">
+                        🔑 Reset Password Token
+                    </button>
                 </div>
                 
                 <div class="p-3 bg-slate-900/60 rounded-xl border border-darkBorder space-y-1">
@@ -1812,6 +1956,82 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: GLOBAL SEARCH (Ctrl + K) ===================== -->
+    <div id="global-search-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-start justify-center z-50 p-4 pt-20">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-xl p-4 rounded-2xl shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 bg-slate-900 border border-darkBorder p-3 rounded-xl">
+                <span class="text-slate-400">🔍</span>
+                <input type="text" id="global-search-input" onkeyup="handleGlobalSearchInput(event)" class="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="Search Work Tokens (KC-WT-00101), Clients, Employees, Invoices..." autofocus>
+                <button onclick="toggleGlobalSearchModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 px-2 py-1 rounded">ESC</button>
+            </div>
+            <div id="global-search-results" class="max-h-80 overflow-y-auto custom-scrollbar space-y-2 text-xs">
+                <div class="text-slate-500 text-center py-6">Type an ID or keyword to search across enterprise entities...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL: ISSUE WORK TOKEN (KC-WT-00101) ===================== -->
+    <div id="work-token-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg p-6 rounded-2xl shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h4 class="font-outfit font-bold text-white text-base">Issue Work Token (KC-WT-00101)</h4>
+                    <p class="text-xs text-slate-400 mt-0.5">Issue a traceable work token with billable rates and subtask checklists.</p>
+                </div>
+                <button onclick="toggleWorkTokenModal(false)" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <form id="create-work-token-form" class="space-y-4 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Work Token Title *</label>
+                    <input type="text" id="wt-title" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. CUDA Tensor Kernel Optimization for Drone Vision" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Project Title</label>
+                        <input type="text" id="wt-project" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. Autonomous AI Drone Vision">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Client Name</label>
+                        <input type="text" id="wt-client" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. Apex Global Solutions">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Assignee Name *</label>
+                        <input type="text" id="wt-assignee" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="e.g. Shon Kapate" required>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Priority</label>
+                        <select id="wt-priority" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none">
+                            <option value="Urgent">Urgent 🔥</option>
+                            <option value="High" selected>High ⚡</option>
+                            <option value="Medium">Medium 🔹</option>
+                            <option value="Low">Low 🟢</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Estimated Hours</label>
+                        <input type="number" step="0.5" id="wt-est-hours" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" value="6.0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 font-semibold mb-1">Billable Rate (₹/hr)</label>
+                        <input type="number" id="wt-rate" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" value="2000">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Checklist Subtasks (One per line)</label>
+                    <textarea id="wt-checklist" rows="2" class="w-full bg-slate-900 border border-darkBorder text-white p-2.5 rounded-lg focus:border-accentBlue focus:outline-none" placeholder="Write Tensor RT engine wrapper&#10;Run benchmark throughput tests"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-darkBorder">
+                    <button type="button" onclick="toggleWorkTokenModal(false)" class="px-4 py-2 border border-darkBorder text-slate-300 text-xs rounded-lg hover:bg-slate-800 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-accentBlue hover:bg-blue-600 text-white font-semibold text-xs rounded-lg transition shadow-lg shadow-accentBlue/20">Issue Token &rarr;</button>
+                </div>
+            </form>
         </div>
     </div>
 

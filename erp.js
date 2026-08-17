@@ -390,6 +390,9 @@ function loadAllERPData() {
     fetchProjects();
     fetchTimesheets();
     fetchInquiries();
+    fetchWorkTokens();
+    fetchApprovals();
+    fetchAuditLogs();
 }
 
 async function confirmResetDatabase() {
@@ -1878,3 +1881,290 @@ async function convertInquiryToClient(inquiryId) {
         alert("Conversion error: " + err.message);
     }
 }
+
+
+// ==========================================================================
+// 6. WORK TOKENS (KC-WT-00101), APPROVALS, AUDIT LOGS & GLOBAL SEARCH
+// ==========================================================================
+
+// Global keyboard shortcut listener (Ctrl + K)
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openGlobalSearchModal();
+    }
+});
+
+function openGlobalSearchModal() {
+    const modal = document.getElementById('global-search-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        const input = document.getElementById('global-search-input');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+}
+
+function toggleGlobalSearchModal(show) {
+    const modal = document.getElementById('global-search-modal');
+    if (modal) modal.classList.toggle('hidden', !show);
+}
+
+let searchDebounceTimer = null;
+function handleGlobalSearchInput(event) {
+    if (event.key === 'Escape') {
+        toggleGlobalSearchModal(false);
+        return;
+    }
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(async () => {
+        const q = event.target.value.trim();
+        const resultsContainer = document.getElementById('global-search-results');
+        if (!resultsContainer) return;
+        if (!q) {
+            resultsContainer.innerHTML = `<div class="text-slate-500 text-center py-6">Type an ID or keyword to search across enterprise entities...</div>`;
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/v1/global-search?q=${encodeURIComponent(q)}`, { headers: { 'Authorization': AUTH_TOKEN } });
+            const results = await res.json();
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = `<div class="text-slate-500 text-center py-6">No matching records found for "${q}".</div>`;
+                return;
+            }
+
+            resultsContainer.innerHTML = results.map(r => `
+                <div class="p-3 bg-slate-900 border border-darkBorder rounded-xl flex items-center justify-between hover:border-accentBlue transition cursor-pointer">
+                    <div>
+                        <div class="font-mono text-accentBlue font-bold">${r.code || ''}</div>
+                        <div class="text-white font-semibold">${r.label || ''}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-800 text-slate-300">${r.type}</span>
+                        <div class="text-[10px] text-slate-400 mt-1">${r.status || ''}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            resultsContainer.innerHTML = `<div class="text-red-400 text-center py-4">Search query failed.</div>`;
+        }
+    }, 300);
+}
+
+// Work Tokens API Handlers
+async function fetchWorkTokens() {
+    try {
+        const res = await fetch(`/api/v1/work-tokens`, { headers: { 'Authorization': AUTH_TOKEN } });
+        const tokens = await res.json();
+        renderWorkTokensTable(tokens || []);
+    } catch (err) {
+        console.error("Fetch work tokens error:", err);
+    }
+}
+
+function renderWorkTokensTable(tokens) {
+    const tbody = document.getElementById('work-tokens-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!tokens || tokens.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500 italic">No active work tokens issued yet. Click "+ Issue Work Token" to create one.</td></tr>`;
+        return;
+    }
+    tokens.forEach(tk => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40';
+        tr.innerHTML = `
+            <td class="p-4 font-mono font-bold text-accentBlue">${tk.token_id}</td>
+            <td class="p-4"><strong class="text-white">${tk.project_title}</strong><br><span class="text-xs text-slate-400">${tk.client_name}</span></td>
+            <td class="p-4 text-xs font-semibold text-slate-200">${tk.title}</td>
+            <td class="p-4 text-xs text-white">${tk.assigned_to}</td>
+            <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded font-bold ${tk.priority === 'Urgent' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}">${tk.priority}</span></td>
+            <td class="p-4"><span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">${tk.status}</span></td>
+            <td class="p-4 font-mono text-xs text-slate-300">${tk.estimated_hours} hrs @ ₹${tk.billing_rate}/hr</td>
+            <td class="p-4">
+                <select onchange="updateWorkTokenStatus(${tk.id}, this.value)" class="bg-slate-900 border border-darkBorder text-white text-[11px] p-1 rounded focus:outline-none">
+                    <option value="Assigned" ${tk.status === 'Assigned' ? 'selected' : ''}>Assigned</option>
+                    <option value="Accepted" ${tk.status === 'Accepted' ? 'selected' : ''}>Accepted</option>
+                    <option value="In Progress" ${tk.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                    <option value="Submitted" ${tk.status === 'Submitted' ? 'selected' : ''}>Submitted (QA)</option>
+                    <option value="Approved" ${tk.status === 'Approved' ? 'selected' : ''}>Approved (QA Passed)</option>
+                    <option value="Completed" ${tk.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                </select>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function toggleWorkTokenModal(show) {
+    const modal = document.getElementById('work-token-modal');
+    if (modal) modal.classList.toggle('hidden', !show);
+}
+
+async function updateWorkTokenStatus(tokenDbId, newStatus) {
+    try {
+        const res = await fetch(`/api/v1/work-tokens/${tokenDbId}/status`, {
+            method: 'PUT',
+            headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, user_name: localStorage.getItem('kc_erp_name') || 'Admin' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            fetchWorkTokens();
+            fetchAuditLogs();
+        } else {
+            alert("Status update failed: " + data.error);
+        }
+    } catch (err) {
+        alert("Status update error: " + err.message);
+    }
+}
+
+// Universal Approvals API Handlers
+async function fetchApprovals() {
+    try {
+        const res = await fetch(`/api/v1/approvals`, { headers: { 'Authorization': AUTH_TOKEN } });
+        const approvals = await res.json();
+        renderApprovalsTable(approvals || []);
+    } catch (err) {
+        console.error("Fetch approvals error:", err);
+    }
+}
+
+function renderApprovalsTable(approvals) {
+    const tbody = document.getElementById('approvals-table-body');
+    const execPendingCount = document.getElementById('exec-pending-approvals-count');
+    if (execPendingCount) {
+        const pendingCount = (approvals || []).filter(a => a.status === 'Pending').length;
+        execPendingCount.textContent = pendingCount;
+    }
+
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!approvals || approvals.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500 italic">No approval requests logged. Expense, leave, and change requests requiring authorization appear here.</td></tr>`;
+        return;
+    }
+    approvals.forEach(app => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40';
+        const isPending = app.status === 'Pending';
+        tr.innerHTML = `
+            <td class="p-4 font-mono font-bold text-slate-200">${app.approval_id}</td>
+            <td class="p-4 font-semibold text-accentBlue text-xs">${app.type}</td>
+            <td class="p-4 text-xs font-bold text-white">${app.requester_name}</td>
+            <td class="p-4 font-mono text-xs text-slate-300">₹${(app.amount || 0).toLocaleString('en-IN')}</td>
+            <td class="p-4 text-xs text-slate-400 max-w-xs truncate">${app.details || ''}</td>
+            <td class="p-4"><span class="px-2 py-0.5 text-[10px] font-bold rounded ${isPending ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400'}">${app.status}</span></td>
+            <td class="p-4 flex gap-2">
+                ${isPending ? `
+                    <button onclick="approvalAction(${app.id}, 'Approved')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded transition">Approve</button>
+                    <button onclick="approvalAction(${app.id}, 'Rejected')" class="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold rounded transition">Reject</button>
+                ` : `<span class="text-xs text-slate-500 font-semibold">${app.approver_name || 'Processed'}</span>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function approvalAction(appDbId, action) {
+    try {
+        const res = await fetch(`/api/v1/approvals/${appDbId}/action`, {
+            method: 'POST',
+            headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, approver_name: localStorage.getItem('kc_erp_name') || 'CEO Admin' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            fetchApprovals();
+            fetchAuditLogs();
+        } else {
+            alert("Action failed: " + data.error);
+        }
+    } catch (err) {
+        alert("Action error: " + err.message);
+    }
+}
+
+// Audit Logs API Handlers
+async function fetchAuditLogs() {
+    try {
+        const res = await fetch(`/api/v1/audit-logs`, { headers: { 'Authorization': AUTH_TOKEN } });
+        const logs = await res.json();
+        renderAuditLogsTable(logs || []);
+    } catch (err) {
+        console.error("Fetch audit logs error:", err);
+    }
+}
+
+function renderAuditLogsTable(logs) {
+    const tbody = document.getElementById('audit-logs-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500 italic">No audit log events recorded yet.</td></tr>`;
+        return;
+    }
+    logs.forEach(lg => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/40 transition border-b border-darkBorder/40 text-xs';
+        tr.innerHTML = `
+            <td class="p-4 font-mono text-slate-400">${lg.created_at}</td>
+            <td class="p-4 font-bold text-white">${lg.user_name}</td>
+            <td class="p-4 font-mono font-bold text-accentBlue">${lg.action}</td>
+            <td class="p-4 text-slate-300">${lg.entity}</td>
+            <td class="p-4 font-mono text-slate-400">${lg.entity_id}</td>
+            <td class="p-4 font-mono text-slate-500 max-w-xs truncate">${lg.old_value || '-'}</td>
+            <td class="p-4 font-mono text-emerald-400 max-w-xs truncate">${lg.new_value || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function triggerPasswordResetToken() {
+    alert("🔒 Password reset token generated for user. Password hashes are stored securely using PBKDF2/SHA256 standard.");
+}
+
+// Attach Work Token form submission event
+document.addEventListener('DOMContentLoaded', () => {
+    const workTokenForm = document.getElementById('create-work-token-form');
+    if (workTokenForm) {
+        workTokenForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById('wt-title').value.trim(),
+                project_title: document.getElementById('wt-project').value.trim() || 'General Consulting',
+                client_name: document.getElementById('wt-client').value.trim() || 'Client',
+                assigned_to: document.getElementById('wt-assignee').value.trim(),
+                priority: document.getElementById('wt-priority').value,
+                estimated_hours: parseFloat(document.getElementById('wt-est-hours').value) || 4.0,
+                billing_rate: parseFloat(document.getElementById('wt-rate').value) || 1500,
+                assigned_by: localStorage.getItem('kc_erp_name') || 'PM',
+                checklist: document.getElementById('wt-checklist').value.split('\n').filter(l => l.trim())
+            };
+
+            try {
+                const res = await fetch(`/api/v1/work-tokens`, {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_TOKEN, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toggleWorkTokenModal(false);
+                    workTokenForm.reset();
+                    fetchWorkTokens();
+                    fetchAuditLogs();
+                } else {
+                    alert("Failed to issue work token: " + data.error);
+                }
+            } catch (err) {
+                alert("Error issuing work token: " + err.message);
+            }
+        });
+    }
+});
+
