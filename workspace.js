@@ -39,14 +39,6 @@ function initAuth() {
   const loginAlertMsg = document.getElementById('login-alert-msg');
   const btnLogout = document.getElementById('btn-logout');
 
-  // Demo Profile 1-Click Fill Buttons
-  document.querySelectorAll('.demo-fill-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('login-username').value = btn.dataset.user;
-      document.getElementById('login-password').value = btn.dataset.pwd;
-      loginForm.dispatchEvent(new Event('submit'));
-    });
-  });
 
   // Handle Login Submit
   loginForm.addEventListener('submit', async (e) => {
