@@ -1,7 +1,7 @@
 {
-  "name": "Kapate Consultancy & ERP Platform",
-  "short_name": "Kapate ERP",
-  "description": "Enterprise HRMS, Workforce Management & IT Consultancy Portal by Kapate Consultancy (Pune, India).",
+  "name": "Kapate Consultancy & Workspace",
+  "short_name": "Kapate Workspace",
+  "description": "Enterprise Technology Solutions, AI Systems & Workspace Platform by Kapate Consultancy (Pune, India).",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
@@ -24,10 +24,10 @@
   ],
   "shortcuts": [
     {
-      "name": "ERP Portal",
-      "short_name": "ERP",
-      "description": "Open Employee ERP & HRMS Portal",
-      "url": "/erp.html"
+      "name": "Workspace",
+      "short_name": "Workspace",
+      "description": "Open Kapate Operating Workspace",
+      "url": "/workspace.html"
     },
     {
       "name": "Contact Us",

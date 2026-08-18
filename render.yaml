@@ -1,10 +1,10 @@
 # Render Blueprint Deployment Configuration
-# Kapate Consultancy & Enterprise ERP Platform
+# Kapate Consultancy & Workspace Platform
 # For instructions, visit: https://render.com/docs/blueprint-spec
 
 services:
   - type: web
-    name: kapate-consultancy-erp
+    name: kapate-consultancy-workspace
     runtime: python
     region: singapore
     plan: free

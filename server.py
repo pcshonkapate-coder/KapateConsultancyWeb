@@ -58,7 +58,7 @@ def load_config():
 SESSION_TOKENS = {}
 
 # Database Configuration & Dual-Backend Engine (SQLite & PostgreSQL / Cloud SQL)
-DATABASE_URL = os.environ.get("DATABASE_URL") or load_config().get("DATABASE_URL", "")
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or load_config().get("DATABASE_URL", "")
 
 class PGConnectionWrapper:
     def __init__(self, raw_conn):
@@ -134,7 +134,7 @@ class PGCursorWrapper:
         self.cur.close()
 
 def get_db():
-    db_url = os.environ.get("DATABASE_URL") or load_config().get("DATABASE_URL", "")
+    db_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL") or load_config().get("DATABASE_URL", "")
     if db_url and (db_url.startswith("postgres://") or db_url.startswith("postgresql://")):
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
