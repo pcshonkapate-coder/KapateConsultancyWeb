@@ -2570,6 +2570,30 @@ def public_reviews():
         conn.close()
         return jsonify({"success": True, "message": "Review published successfully."})
 
+@app.route('/api/workspace/inquiries', methods=['GET', 'DELETE'])
+def workspace_inquiries():
+    user, err = require_auth(allowed_roles=['CEO'])
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM inquiries ORDER BY id DESC")
+        inquiries = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "inquiries": inquiries})
+    elif request.method == 'DELETE':
+        data = request.get_json(silent=True) or {}
+        inq_id = data.get('id')
+        if not inq_id:
+            conn.close()
+            return jsonify({"success": False, "error": "Inquiry ID required."}), 400
+        cursor.execute("DELETE FROM inquiries WHERE id = ?", (inq_id,))
+        conn.commit()
+        conn.close()
+        audit_log(user['name'], "Deleted Inquiry", "inquiries", str(inq_id))
+        return jsonify({"success": True, "message": "Inquiry deleted."})
+
 # ==============================================================================
 # WORKSPACE & STATIC ROUTE HANDLERS
 # ==============================================================================
@@ -2579,8 +2603,12 @@ def public_reviews():
 def serve_workspace():
     return send_from_directory('.', 'workspace.html')
 
-@app.route('/erp.html')
+@app.route('/admin')
+@app.route('/admin/')
 @app.route('/admin.html')
+@app.route('/erp')
+@app.route('/erp/')
+@app.route('/erp.html')
 def redirect_to_workspace():
     return redirect('/workspace.html', code=301)
 
