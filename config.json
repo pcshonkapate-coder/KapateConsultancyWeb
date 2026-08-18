@@ -1,4 +1,5 @@
 {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_8b4SBlRExyuo@ep-odd-lake-aydjgg9n.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require",
     "SMTP_SERVER": "smtp.gmail.com",
     "SMTP_PORT": 587,
     "SMTP_EMAIL": "office.kapateconsultancy@gmail.com",

@@ -4,11 +4,12 @@ import json
 import random
 import datetime
 import smtplib
+from io import StringIO
+import csv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, jsonify, send_from_directory
-from twilio.rest import Client
+from flask import Flask, request, jsonify, send_from_directory, redirect, Response
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
@@ -24,111 +25,10 @@ def add_cors_headers(response):
 def handle_options(path=None):
     return '', 200
 
-# Configuration variables
+# Base Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = '/tmp/config.json' if os.environ.get('VERCEL') else os.path.join(BASE_DIR, 'config.json')
-AUTH_TOKEN = "Bearer kapate-admin-secure-token-98765"
-
-if os.environ.get('VERCEL'):
-    DB_FILE = '/tmp/inquiries.db'
-    if not os.path.exists(DB_FILE) and os.path.exists(os.path.join(BASE_DIR, 'inquiries.db')):
-        import shutil
-        shutil.copy(os.path.join(BASE_DIR, 'inquiries.db'), DB_FILE)
-else:
-    DB_FILE = os.path.join(BASE_DIR, 'inquiries.db')
-
-
-def generate_unique_id(prefix):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    table_map = {
-        "KC-EMP": "employees",
-        "KC-CLI": "clients",
-        "KC-LEAD": "leads",
-        "KC-OPP": "opportunities",
-        "KC-PRJ": "projects",
-        "KC-MIL": "milestones",
-        "KC-WT": "work_tokens",
-        "KC-CR": "change_requests",
-        "KC-PRO": "proposals",
-        "KC-CON": "contracts",
-        "KC-INV": "invoices",
-        "KC-PAY": "payments",
-        "KC-EXP": "expenses",
-        "KC-TKT": "tickets",
-        "KC-PO": "purchase_orders",
-        "KC-APP": "approvals"
-    }
-    
-    table = table_map.get(prefix, "activity_logs")
-    max_id = 100
-    try:
-        cursor.execute(f"SELECT MAX(id) FROM {table}")
-        row = cursor.fetchone()
-        if row and row[0]:
-            max_id = max(max_id, row[0] + 100)
-        else:
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
-            max_id = 100 + cursor.fetchone()[0]
-    except Exception:
-        pass
-    
-    target_id = max_id + 1
-    id_col_map = {
-        "KC-EMP": "emp_id",
-        "KC-WT": "token_id",
-        "KC-APP": "approval_id",
-        "KC-INV": "invoice_no"
-    }
-    id_col = id_col_map.get(prefix)
-    if id_col:
-        while True:
-            candidate = f"{prefix}-{target_id:05d}"
-            try:
-                cursor.execute(f"SELECT 1 FROM {table} WHERE {id_col} = ?", (candidate,))
-                if not cursor.fetchone():
-                    conn.close()
-                    return candidate
-                target_id += 1
-            except Exception:
-                conn.close()
-                return candidate
-    conn.close()
-    return f"{prefix}-{target_id:05d}"
-
-
-def audit_log_event(user_name, action, entity, entity_id="", old_val="", new_val="", ip_addr="127.0.0.1"):
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS audit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_name TEXT NOT NULL,
-                action TEXT NOT NULL,
-                entity TEXT NOT NULL,
-                entity_id TEXT DEFAULT '',
-                old_value TEXT DEFAULT '',
-                new_value TEXT DEFAULT '',
-                ip_address TEXT DEFAULT '127.0.0.1',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        cursor.execute('''
-            INSERT INTO audit_logs (user_name, action, entity, entity_id, old_value, new_value, ip_address)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (user_name, action, entity, str(entity_id), str(old_val), str(new_val), ip_addr))
-        
-        cursor.execute('''
-            INSERT INTO activity_logs (user_name, action, details, icon)
-            VALUES (?, ?, ?, 'shield')
-        ''', (user_name, action, f"{entity} #{entity_id} {old_val} -> {new_val}".strip()))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Audit log error: {e}")
-
+DB_FILE = '/tmp/inquiries.db' if os.environ.get('VERCEL') else os.path.join(BASE_DIR, 'inquiries.db')
 
 def load_config():
     default_config = {
@@ -142,2864 +42,2561 @@ def load_config():
         "TWILIO_PHONE_NUMBER": os.environ.get("TWILIO_PHONE_NUMBER", "")
     }
     if not os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(default_config, f, indent=4)
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(default_config, f, indent=4)
+        except Exception:
+            pass
         return default_config
     try:
         with open(CONFIG_FILE, 'r') as f:
-            file_config = json.load(f)
-            # Ensure SMTP_PASSWORD is not empty
-            if not file_config.get("SMTP_PASSWORD"):
-                file_config["SMTP_PASSWORD"] = default_config["SMTP_PASSWORD"]
-            if not file_config.get("SMTP_EMAIL"):
-                file_config["SMTP_EMAIL"] = default_config["SMTP_EMAIL"]
-            return file_config
-    except Exception as e:
-        print(f"Error loading config.json: {e}. Using defaults.")
+            return json.load(f)
+    except Exception:
         return default_config
 
-# Initialize SQLite database
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
+# Token cache for session management
+SESSION_TOKENS = {}
+
+# Database Configuration & Dual-Backend Engine (SQLite & PostgreSQL / Cloud SQL)
+DATABASE_URL = os.environ.get("DATABASE_URL") or load_config().get("DATABASE_URL", "")
+
+class PGConnectionWrapper:
+    def __init__(self, raw_conn):
+        self.conn = raw_conn
+
+    def cursor(self):
+        return PGCursorWrapper(self.conn.cursor())
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
+
+    def execute(self, sql, params=None):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+class PGCursorWrapper:
+    def __init__(self, raw_cursor):
+        self.cur = raw_cursor
+
+    def execute(self, sql, params=None):
+        # Auto-translate SQLite syntax to standard PostgreSQL
+        clean_sql = sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+        clean_sql = clean_sql.replace("datetime('now', 'localtime')", "CURRENT_TIMESTAMP")
+        clean_sql = clean_sql.replace("date('now', '+14 days')", "to_char(CURRENT_DATE + INTERVAL '14 days', 'YYYY-MM-DD')")
+        clean_sql = clean_sql.replace("date('now')", "to_char(CURRENT_DATE, 'YYYY-MM-DD')")
+        clean_sql = clean_sql.replace('?', '%s')
+
+        if params is not None:
+            self.cur.execute(clean_sql, params)
+        else:
+            self.cur.execute(clean_sql)
+        return self
+
+    def fetchone(self):
+        row = self.cur.fetchone()
+        if row is None:
+            return None
+        # Support both dictionary and numeric indexing
+        if isinstance(row, dict):
+            class DictWithIndex(dict):
+                def __getitem__(self, item):
+                    if isinstance(item, int):
+                        return list(self.values())[item]
+                    return super().__getitem__(item)
+            return DictWithIndex(row)
+        return row
+
+    def fetchall(self):
+        rows = self.cur.fetchall()
+        if not rows:
+            return []
+        res = []
+        for r in rows:
+            if isinstance(r, dict):
+                class DictWithIndex(dict):
+                    def __getitem__(self, item):
+                        if isinstance(item, int):
+                            return list(self.values())[item]
+                        return super().__getitem__(item)
+                res.append(DictWithIndex(r))
+            else:
+                res.append(r)
+        return res
+
+    def close(self):
+        self.cur.close()
+
+def get_db():
+    db_url = os.environ.get("DATABASE_URL") or load_config().get("DATABASE_URL", "")
+    if db_url and (db_url.startswith("postgres://") or db_url.startswith("postgresql://")):
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        try:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            raw_conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+            return PGConnectionWrapper(raw_conn)
+        except Exception as e:
+            print(f"PostgreSQL connection failed ({e}), falling back to local SQLite.")
+    
+    conn = sqlite3.connect(DB_FILE, timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception:
+        pass
+    return conn
+
+def audit_log(user_name, action, entity, entity_id="", old_val="", new_val="", ip_addr="127.0.0.1", reason=""):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO audit_logs (user_name, action, entity, entity_id, old_value, new_value, ip_address, reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+        ''', (user_name, action, entity, str(entity_id), str(old_val), str(new_val), ip_addr, reason))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Audit log error: {e}")
+
+def create_notification(user_id, title, message, link_tab="tab-dashboard", n_type="task", user_role=""):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO notifications (user_id, user_role, title, message, link_tab, type, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now', 'localtime'))
+        ''', (user_id, user_role, title, message, link_tab, n_type))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Notification error: {e}")
+
+# Database Initialization & Migration
+def init_database():
+    conn = get_db()
     cursor = conn.cursor()
+
+    # Public inquiries
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS inquiries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reference_number TEXT UNIQUE NOT NULL,
+            reference_num TEXT UNIQUE,
+            reference_number TEXT,
             name TEXT NOT NULL,
             email TEXT NOT NULL,
+            phone TEXT NOT NULL,
             service TEXT NOT NULL,
-            message TEXT NOT NULL,
-            status TEXT DEFAULT 'Pending',
-            notes TEXT,
+            budget TEXT,
+            timeline TEXT,
+            message TEXT,
+            status TEXT DEFAULT 'New',
+            admin_notes TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
-    
-    # Safely alter table to add notes column if DB was already created
-    try:
-        cursor.execute("ALTER TABLE inquiries ADD COLUMN notes TEXT")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
 
-    # Reviews table
+    # Public reviews
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-            review_text TEXT NOT NULL,
-            service TEXT DEFAULT '',
-            approved INTEGER DEFAULT 0,
+            role TEXT,
+            company TEXT,
+            rating INTEGER DEFAULT 5,
+            comment TEXT NOT NULL,
+            status TEXT DEFAULT 'Approved',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Clients table
+    # Workspace Users (Extended for full employee profiles)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS clients (
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            emp_code TEXT UNIQUE NOT NULL,
+            username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            phone TEXT DEFAULT '',
-            company TEXT DEFAULT '',
-            tag TEXT DEFAULT 'Lead',
-            status TEXT DEFAULT 'Contacted',
-            total_spent REAL DEFAULT 0.0,
-            notes TEXT DEFAULT '',
+            password_hash TEXT NOT NULL,
+            name TEXT NOT NULL,
+            role TEXT NOT NULL, -- CEO, Manager, Employee, Intern
+            department TEXT NOT NULL,
+            designation TEXT,
+            manager_name TEXT DEFAULT 'Shon Kapate',
+            status TEXT DEFAULT 'Active', -- Active, Inactive, Suspended
+            phone TEXT,
+            avatar_url TEXT,
+            joining_date TEXT DEFAULT '2026-01-12',
+            employment_type TEXT DEFAULT 'Full-Time', -- Full-Time, Part-Time, Contract, Internship
+            dob TEXT DEFAULT '1996-05-14',
+            address TEXT DEFAULT 'Pune, Maharashtra, India',
+            emergency_contact TEXT DEFAULT '+91 9822001100 (Parent)',
+            basic_pay REAL DEFAULT 50000,
+            performance_score REAL DEFAULT 4.7,
+            last_active TEXT DEFAULT 'Just now',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Projects table (Kanban)
+    # Departments Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS departments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            head_name TEXT NOT NULL,
+            head_id INTEGER,
+            description TEXT,
+            budget REAL DEFAULT 1000000,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Employee Confidential Notes (CEO / Admin Only)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employee_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            emp_id INTEGER NOT NULL,
+            author_id INTEGER NOT NULL,
+            author_name TEXT NOT NULL,
+            author_role TEXT NOT NULL,
+            note_text TEXT NOT NULL,
+            is_confidential INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Employee Official Documents
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employee_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            emp_id INTEGER NOT NULL,
+            doc_type TEXT NOT NULL, -- Resume, Joining Letter, Offer Letter, ID Document, Certificate, Performance Review
+            doc_name TEXT NOT NULL,
+            file_size TEXT DEFAULT '450 KB',
+            file_url TEXT DEFAULT '',
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Roles & Permissions Matrix Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS roles_permissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            permission_key TEXT UNIQUE NOT NULL,
+            permission_label TEXT NOT NULL,
+            category TEXT NOT NULL,
+            ceo_perm TEXT DEFAULT 'Full',
+            manager_perm TEXT DEFAULT 'Team',
+            employee_perm TEXT DEFAULT 'Own',
+            intern_perm TEXT DEFAULT 'Restricted'
+        )
+    ''')
+
+    # Workspace Projects
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            client_name TEXT NOT NULL,
-            client_email TEXT DEFAULT '',
-            service TEXT NOT NULL,
-            budget REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Pending',
-            progress INTEGER DEFAULT 0,
-            deadline TEXT DEFAULT '',
-            tasks_completed INTEGER DEFAULT 0,
-            tasks_total INTEGER DEFAULT 5,
-            notes TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-
-    # Leads table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            service TEXT NOT NULL,
-            message TEXT NOT NULL,
-            score INTEGER DEFAULT 50,
-            priority TEXT DEFAULT 'Warm',
-            status TEXT DEFAULT 'New',
-            assigned_to TEXT DEFAULT 'Unassigned',
-            reminder_date TEXT DEFAULT '',
+            client_id INTEGER,
+            client_name TEXT,
+            description TEXT,
+            manager_id INTEGER,
+            manager_name TEXT,
+            team_members TEXT,
+            start_date TEXT,
+            deadline TEXT,
+            status TEXT DEFAULT 'Active',
+            priority TEXT DEFAULT 'Medium',
+            budget REAL DEFAULT 0,
+            progress INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Activity Logs table
+    # Project Milestones
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS activity_logs (
+        CREATE TABLE IF NOT EXISTS milestones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_name TEXT DEFAULT 'System',
-            action TEXT NOT NULL,
-            details TEXT DEFAULT '',
-            icon TEXT DEFAULT 'info',
+            project_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT DEFAULT 'Pending',
+            due_date TEXT,
+            order_index INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Notifications table
+    # Workspace Tasks
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            project_id TEXT,
+            project_name TEXT,
+            milestone_id INTEGER,
+            assigned_by_id INTEGER,
+            assigned_by_name TEXT,
+            assigned_to_id INTEGER,
+            assigned_to_name TEXT,
+            priority TEXT DEFAULT 'Medium',
+            status TEXT DEFAULT 'Assigned',
+            start_date TEXT,
+            deadline TEXT,
+            estimated_hours REAL DEFAULT 0,
+            actual_hours REAL DEFAULT 0,
+            tags TEXT,
+            submission_notes TEXT DEFAULT '',
+            submission_url TEXT DEFAULT '',
+            manager_review_notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Task Comments
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS task_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT NOT NULL,
+            user_id INTEGER,
+            user_name TEXT NOT NULL,
+            user_role TEXT NOT NULL,
+            comment TEXT NOT NULL,
+            attachment_name TEXT,
+            attachment_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Time tracking entries
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS task_time_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT NOT NULL,
+            user_id INTEGER,
+            user_name TEXT NOT NULL,
+            hours REAL NOT NULL,
+            entry_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Internal Mail System
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS internal_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER,
+            sender_name TEXT NOT NULL,
+            sender_username TEXT NOT NULL,
+            receiver_id INTEGER,
+            receiver_name TEXT NOT NULL,
+            receiver_username TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            folder TEXT DEFAULT 'inbox',
+            is_read INTEGER DEFAULT 0,
+            is_starred INTEGER DEFAULT 0,
+            attachment_name TEXT,
+            attachment_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Chat Channels & Messages
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            channel_type TEXT DEFAULT 'general',
+            members_json TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id TEXT NOT NULL,
+            sender_id INTEGER,
+            sender_name TEXT NOT NULL,
+            sender_role TEXT NOT NULL,
+            message TEXT NOT NULL,
+            attachment_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Notifications
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            user_role TEXT DEFAULT '',
             title TEXT NOT NULL,
             message TEXT NOT NULL,
-            category TEXT DEFAULT 'info',
+            link_tab TEXT DEFAULT 'tab-dashboard',
+            type TEXT DEFAULT 'task',
             is_read INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # OTP codes verification table
+    # Hierarchical Company Drive
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS otp_codes (
+        CREATE TABLE IF NOT EXISTS company_files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            code TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-
-    # Employees table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT UNIQUE NOT NULL,
+            folder TEXT NOT NULL,
+            subfolder TEXT DEFAULT '',
             name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            role TEXT NOT NULL,
-            department TEXT NOT NULL,
-            employment_type TEXT NOT NULL,
-            join_date TEXT NOT NULL,
-            basic_pay REAL DEFAULT 0.0,
-            allowances REAL DEFAULT 0.0,
-            deductions REAL DEFAULT 0.0,
-            performance_score REAL DEFAULT 100.0
+            file_size TEXT DEFAULT '120 KB',
+            file_type TEXT DEFAULT 'PDF',
+            uploaded_by TEXT NOT NULL,
+            uploader_role TEXT NOT NULL,
+            access_roles TEXT DEFAULT 'All',
+            download_url TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Attendance table
+    # CRM Clients
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS attendance (
+        CREATE TABLE IF NOT EXISTS clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT NOT NULL,
-            date TEXT NOT NULL,
-            check_in TEXT DEFAULT '',
-            check_out TEXT DEFAULT '',
-            total_hours REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Present'
-        )
-    ''')
-    conn.commit()
-
-    # Leaves table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS leaves (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT NOT NULL,
-            leave_type TEXT NOT NULL,
-            start_date TEXT NOT NULL,
-            end_date TEXT NOT NULL,
-            reason TEXT DEFAULT '',
-            status TEXT DEFAULT 'Pending'
-        )
-    ''')
-    conn.commit()
-
-    # Payroll table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS payroll (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT NOT NULL,
-            month TEXT NOT NULL,
-            basic REAL DEFAULT 0.0,
-            allowances REAL DEFAULT 0.0,
-            deductions REAL DEFAULT 0.0,
-            net_salary REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Pending'
-        )
-    ''')
-    conn.commit()
-
-    # Expenses table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount REAL DEFAULT 0.0,
-            date TEXT NOT NULL,
-            status TEXT DEFAULT 'Approved'
-        )
-    ''')
-    conn.commit()
-
-    # Recruitments table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS recruitments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            client_id TEXT UNIQUE NOT NULL,
+            company_name TEXT NOT NULL,
+            contact_person TEXT NOT NULL,
             email TEXT NOT NULL,
-            role TEXT NOT NULL,
-            status TEXT DEFAULT 'Applied',
-            score INTEGER DEFAULT 50
-        )
-    ''')
-    conn.commit()
-
-    # ERP Tasks table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS erp_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            assigned_to TEXT NOT NULL,
-            status TEXT DEFAULT 'To Do',
-            priority TEXT DEFAULT 'Medium',
-            deadline TEXT NOT NULL,
-            checklist TEXT DEFAULT '[]'
-        )
-    ''')
-    conn.commit()
-
-    # Invoices table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS invoices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            invoice_no TEXT UNIQUE NOT NULL,
-            client_name TEXT NOT NULL,
-            client_email TEXT NOT NULL,
-            service TEXT NOT NULL,
-            amount REAL DEFAULT 0.0,
-            tax_gst REAL DEFAULT 0.0,
-            total_amount REAL DEFAULT 0.0,
-            issue_date TEXT NOT NULL,
-            due_date TEXT NOT NULL,
-            status TEXT DEFAULT 'Unpaid',
-            line_items TEXT DEFAULT '[]'
-        )
-    ''')
-    conn.commit()
-
-    # Timesheets table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS timesheets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emp_id TEXT NOT NULL,
-            emp_name TEXT NOT NULL,
-            project_title TEXT NOT NULL,
-            client_name TEXT NOT NULL,
-            hours_logged REAL DEFAULT 0.0,
-            date TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            billable_rate REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Approved'
-        )
-    ''')
-    conn.commit()
-
-    # Work Tokens table (KC-WT-00101)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS work_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token_id TEXT UNIQUE NOT NULL,
-            project_title TEXT NOT NULL,
-            client_name TEXT DEFAULT '',
-            milestone_id TEXT DEFAULT '',
-            title TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            assigned_by TEXT NOT NULL,
-            assigned_to TEXT NOT NULL,
-            priority TEXT DEFAULT 'Medium',
-            estimated_hours REAL DEFAULT 0.0,
-            billable_hours REAL DEFAULT 0.0,
-            billing_rate REAL DEFAULT 1500.0,
-            deadline TEXT DEFAULT '',
-            status TEXT DEFAULT 'Assigned',
-            checklist TEXT DEFAULT '[]',
+            phone TEXT,
+            address TEXT,
+            industry TEXT DEFAULT 'Technology',
+            status TEXT DEFAULT 'Active',
+            notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Approvals table (Universal Approval Center)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS approvals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            approval_id TEXT UNIQUE NOT NULL,
-            type TEXT NOT NULL,
-            requester_name TEXT NOT NULL,
-            amount REAL DEFAULT 0.0,
-            details TEXT DEFAULT '',
-            status TEXT DEFAULT 'Pending',
-            approver_name TEXT DEFAULT 'Pending Review',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-
-    # GitHub Repositories Manager table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS github_repos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            repo_name TEXT UNIQUE NOT NULL,
-            repo_url TEXT UNIQUE NOT NULL,
-            description TEXT DEFAULT '',
-            project_title TEXT DEFAULT '',
-            assigned_to TEXT DEFAULT '',
-            is_private INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-
-    # Opportunities table (CRM)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS opportunities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            opp_id TEXT UNIQUE NOT NULL,
-            client_name TEXT NOT NULL,
-            title TEXT NOT NULL,
-            stage TEXT DEFAULT 'Discovery',
-            value REAL DEFAULT 0.0,
-            close_date TEXT DEFAULT '',
-            notes TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-
-    # Proposals table
+    # Proposals
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proposals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             proposal_id TEXT UNIQUE NOT NULL,
+            client_id TEXT,
             client_name TEXT NOT NULL,
-            title TEXT NOT NULL,
-            scope TEXT DEFAULT '',
-            amount REAL DEFAULT 0.0,
-            tax_gst REAL DEFAULT 0.0,
+            project_name TEXT NOT NULL,
+            services TEXT NOT NULL,
+            description TEXT,
+            pricing REAL DEFAULT 0,
+            timeline TEXT,
+            terms TEXT,
+            payment_schedule TEXT,
             status TEXT DEFAULT 'Sent',
-            valid_until TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Contracts table
+    # Invoices & Finance
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contracts (
+        CREATE TABLE IF NOT EXISTS invoices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contract_id TEXT UNIQUE NOT NULL,
+            invoice_no TEXT UNIQUE NOT NULL,
+            client_id TEXT,
             client_name TEXT NOT NULL,
-            contract_type TEXT DEFAULT 'Consultancy Agreement',
-            start_date TEXT DEFAULT '',
-            end_date TEXT DEFAULT '',
-            value REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Active',
+            project_id TEXT,
+            project_name TEXT,
+            items_json TEXT NOT NULL,
+            subtotal REAL DEFAULT 0,
+            tax_rate REAL DEFAULT 18.0,
+            tax_amount REAL DEFAULT 0,
+            discount REAL DEFAULT 0,
+            total REAL DEFAULT 0,
+            due_date TEXT,
+            status TEXT DEFAULT 'Sent',
+            notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Change Requests table (KC-CR-00101)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS change_requests (
+        CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cr_id TEXT UNIQUE NOT NULL,
-            project_title TEXT NOT NULL,
-            client_name TEXT NOT NULL,
+            category TEXT NOT NULL,
             title TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            impact_hours REAL DEFAULT 0.0,
-            additional_cost REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Requested',
+            amount REAL NOT NULL,
+            date TEXT NOT NULL,
+            recorded_by TEXT NOT NULL,
+            receipt_url TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Purchase Orders table (KC-PO-00101)
+    # Attendance & Leave
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS purchase_orders (
+        CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            po_id TEXT UNIQUE NOT NULL,
-            vendor_name TEXT NOT NULL,
-            project_title TEXT DEFAULT '',
-            amount REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Draft',
+            emp_id TEXT NOT NULL,
+            emp_name TEXT NOT NULL,
+            date TEXT NOT NULL,
+            clock_in TEXT,
+            clock_out TEXT,
+            total_hours REAL DEFAULT 0,
+            status TEXT DEFAULT 'Present',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Support Tickets table (KC-TKT-00101)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tickets (
+        CREATE TABLE IF NOT EXISTS leave_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ticket_id TEXT UNIQUE NOT NULL,
-            client_name TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            priority TEXT DEFAULT 'Medium',
-            sla_hours INTEGER DEFAULT 24,
-            status TEXT DEFAULT 'Open',
-            assigned_to TEXT DEFAULT 'Unassigned',
+            emp_id TEXT NOT NULL,
+            emp_name TEXT NOT NULL,
+            leave_type TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'Pending',
+            reviewed_by TEXT DEFAULT '',
+            review_notes TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
 
-    # Documents table
+    # Meetings
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS documents (
+        CREATE TABLE IF NOT EXISTS meetings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doc_id TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            entity_type TEXT DEFAULT 'Project',
+            title TEXT NOT NULL,
+            organizer_id INTEGER,
+            organizer_name TEXT NOT NULL,
+            participants_json TEXT DEFAULT '[]',
+            meeting_date TEXT NOT NULL,
+            meeting_time TEXT NOT NULL,
+            location_link TEXT DEFAULT 'Google Meet / Zoom',
+            agenda TEXT,
+            notes TEXT,
+            action_items_json TEXT DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Performance Reviews
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS performance_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            emp_id TEXT NOT NULL,
+            emp_name TEXT NOT NULL,
+            reviewer_id INTEGER,
+            reviewer_name TEXT NOT NULL,
+            review_period TEXT NOT NULL,
+            tasks_completed INTEGER DEFAULT 0,
+            on_time_rate REAL DEFAULT 95.0,
+            rating_score REAL DEFAULT 4.8,
+            feedback TEXT NOT NULL,
+            goals TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Internships
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS internship_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            intern_id TEXT UNIQUE NOT NULL,
+            intern_name TEXT NOT NULL,
+            mentor_id INTEGER,
+            mentor_name TEXT NOT NULL,
+            department TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            progress_percent INTEGER DEFAULT 80,
+            modules_json TEXT DEFAULT '[]',
+            feedback TEXT,
+            certificate_status TEXT DEFAULT 'In Progress',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Announcements
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS announcements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            target_audience TEXT DEFAULT 'All',
+            priority TEXT DEFAULT 'Normal',
+            author_name TEXT NOT NULL,
+            author_role TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Audit Logs (With Reason Column for CEO Overrides)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT NOT NULL,
+            action TEXT NOT NULL,
+            entity TEXT NOT NULL,
             entity_id TEXT DEFAULT '',
-            access_level TEXT DEFAULT 'Internal',
-            file_path TEXT DEFAULT '',
+            old_value TEXT DEFAULT '',
+            new_value TEXT DEFAULT '',
+            ip_address TEXT DEFAULT '127.0.0.1',
+            reason TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
     conn.commit()
 
-    try:
-        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN checklist TEXT DEFAULT '[]'")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN description TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE employees ADD COLUMN password TEXT DEFAULT 'Kapate@123'")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE work_tokens ADD COLUMN github_repo TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE work_tokens ADD COLUMN github_pr_link TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN github_repo TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN github_pr_link TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE work_tokens ADD COLUMN attachment_pdf TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE erp_tasks ADD COLUMN attachment_pdf TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE employees ADD COLUMN appointment_pdf TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
+    # Seed Default Data if empty
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        seed_workspace_data(cursor, conn)
+    else:
+        conn.close()
+
+def seed_workspace_data(cursor, conn):
+    print("Seeding initial Kapate Workspace CEO Control Center data...")
+
+    # 1. Departments
+    depts_data = [
+        ("Software Development", "Rohit Verma", 2, "Core engineering, full-stack web applications, and mobile solutions.", 1500000),
+        ("AI & Machine Learning", "Ananya Deshmukh", 3, "Predictive modeling, NLP pipelines, and computer vision architectures.", 1800000),
+        ("UI/UX & Design", "Pooja Kulkarni", 5, "Product design systems, wireframing, user research, and branding.", 800000),
+        ("Cloud Infrastructure & DevOps", "Aditya Shinde", 6, "AWS architectures, Kubernetes clusters, CI/CD, and cyber compliance.", 1200000),
+        ("Executive & Management", "Shon Kapate", 1, "Overall strategy, financial operations, and client relationships.", 2500000)
+    ]
+    for d in depts_data:
+        cursor.execute('''
+            INSERT INTO departments (name, head_name, head_id, description, budget)
+            VALUES (?, ?, ?, ?, ?)
+        ''', d)
+
+    # 2. Users (Extended)
+    users_data = [
+        ("EMP-001", "ceo", "ceo@internal.kapate", generate_password_hash("Kapate@Ceo2026"), "Shon Kapate", "CEO", "Executive & Management", "Founder & Chief Executive", "Board of Directors", "Active", "+91 8421174957", "2026-01-01", "Full-Time", "1995-04-10", "Pune, India", "+91 8421174957 (Direct)", 250000, 5.0),
+        ("EMP-002", "manager01", "manager01@internal.kapate", generate_password_hash("Manager@2026"), "Rohit Verma", "Manager", "Software Development", "Lead Tech Architect", "Shon Kapate", "Active", "+91 9823011223", "2026-01-15", "Full-Time", "1994-08-22", "Kothrud, Pune", "+91 9823011224 (Spouse)", 140000, 4.9),
+        ("EMP-003", "manager02", "manager02@internal.kapate", generate_password_hash("Manager@2026"), "Ananya Deshmukh", "Manager", "AI & Machine Learning", "AI Solutions Director", "Shon Kapate", "Active", "+91 9765432100", "2026-02-01", "Full-Time", "1995-11-18", "Aundh, Pune", "+91 9765432101 (Brother)", 145000, 4.8),
+        ("EMP-004", "employee01", "employee01@internal.kapate", generate_password_hash("Emp@2026"), "Siddharth Patil", "Employee", "Software Development", "Senior Full-Stack Engineer", "Rohit Verma", "Active", "+91 9422019988", "2026-02-15", "Full-Time", "1997-03-12", "Baner, Pune", "+91 9422019989 (Mother)", 95000, 4.7),
+        ("EMP-005", "employee02", "employee02@internal.kapate", generate_password_hash("Emp@2026"), "Pooja Kulkarni", "Employee", "UI/UX & Design", "Senior UI/UX Designer", "Rohit Verma", "Active", "+91 9822456789", "2026-03-01", "Full-Time", "1998-07-29", "Viman Nagar, Pune", "+91 9822456780 (Father)", 88000, 4.8),
+        ("EMP-006", "employee03", "employee03@internal.kapate", generate_password_hash("Emp@2026"), "Aditya Shinde", "Employee", "Cloud Infrastructure & DevOps", "Cloud & DevOps Specialist", "Rohit Verma", "Active", "+91 9977665544", "2026-03-10", "Full-Time", "1996-12-05", "Wakad, Pune", "+91 9977665545 (Sister)", 92000, 4.9),
+        ("INT-007", "intern01", "intern01@internal.kapate", generate_password_hash("Intern@2026"), "Tanvi Joshi", "Intern", "Software Development", "Full-Stack Development Intern", "Rohit Verma", "Active", "+91 8888777666", "2026-06-01", "Internship", "2003-09-14", "Shivajinagar, Pune", "+91 8888777667 (Parent)", 25000, 4.6),
+        ("INT-008", "intern02", "intern02@internal.kapate", generate_password_hash("Intern@2026"), "Gaurav More", "Intern", "AI & Machine Learning", "AI/ML Research Intern", "Ananya Deshmukh", "Active", "+91 7777666555", "2026-06-15", "Internship", "2003-01-20", "Hadapsar, Pune", "+91 7777666556 (Parent)", 25000, 4.8)
+    ]
+    for u in users_data:
+        cursor.execute('''
+            INSERT INTO users (emp_code, username, email, password_hash, name, role, department, designation, manager_name, status, phone, joining_date, employment_type, dob, address, emergency_contact, basic_pay, performance_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', u)
+
+    # 3. Roles & Permissions Matrix Seed
+    perms_data = [
+        ("view_employees", "View Employee Directory", "People", "Full Company", "Assigned Team", "Self Profile", "Self Profile"),
+        ("manage_employees", "Create & Edit Staff Accounts", "People", "Full Company", "No Access", "No Access", "No Access"),
+        ("create_projects", "Create & Manage Projects", "Projects", "Full Company", "Assigned Sprints", "No Access", "No Access"),
+        ("assign_tasks", "Assign & Delegate Tasks", "Tasks", "Full Company", "Assigned Team", "No Access", "No Access"),
+        ("approve_tasks", "Review & Approve Task Deliverables", "Tasks", "Full Company", "Assigned Team", "No Access", "No Access"),
+        ("task_override", "CEO Task Master Override", "Tasks", "Full Company", "No Access", "No Access", "No Access"),
+        ("view_finance", "Access Financial Ledgers & Revenue", "Finance", "Full Company", "Restricted", "No Access", "No Access"),
+        ("issue_invoices", "Generate Invoices & Billing", "Finance", "Full Company", "Draft Only", "No Access", "No Access"),
+        ("view_audit_logs", "Inspect Immutable Audit Trails", "Security", "Full Company", "Restricted", "No Access", "No Access")
+    ]
+    for p in perms_data:
+        cursor.execute('''
+            INSERT INTO roles_permissions (permission_key, permission_label, category, ceo_perm, manager_perm, employee_perm, intern_perm)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', p)
+
+    # 4. Employee Confidential Notes (CEO Notes)
+    notes_data = [
+        (4, 1, "Shon Kapate", "CEO", "Siddharth has demonstrated exceptional technical ownership of the WebRTC modules. Recommended for Tech Lead evaluation in Q4."),
+        (6, 1, "Shon Kapate", "CEO", "Aditya maintained 100% uptime on the AWS ECS cluster for Vertex Logistics. High reliability engineer."),
+        (7, 1, "Shon Kapate", "CEO", "Tanvi is performing at a senior intern level. Consider pre-placement offer (PPO) upon graduation.")
+    ]
+    for n in notes_data:
+        cursor.execute('''
+            INSERT INTO employee_notes (emp_id, author_id, author_name, author_role, note_text)
+            VALUES (?, ?, ?, ?, ?)
+        ''', n)
+
+    # 5. Employee Documents
+    docs_data = [
+        (4, "Resume", "Siddharth_Patil_Resume.pdf", "280 KB", "/docs/siddharth_resume.pdf"),
+        (4, "Offer Letter", "Kapate_Offer_Letter_EMP004.pdf", "350 KB", "/docs/siddharth_offer.pdf"),
+        (4, "Joining Letter", "Kapate_Joining_Verification_EMP004.pdf", "420 KB", "/docs/siddharth_joining.pdf"),
+        (5, "Resume", "Pooja_Kulkarni_Portfolio_Resume.pdf", "1.2 MB", "/docs/pooja_resume.pdf"),
+        (6, "Certificates", "AWS_Solutions_Architect_Certificate.pdf", "850 KB", "/docs/aditya_aws.pdf")
+    ]
+    for doc in docs_data:
+        cursor.execute('''
+            INSERT INTO employee_documents (emp_id, doc_type, doc_name, file_size, file_url)
+            VALUES (?, ?, ?, ?, ?)
+        ''', doc)
+
+    # 6. Clients
+    clients_data = [
+        ("KC-CLI-101", "Nexus Health Systems", "Dr. Rajesh Kulkarni", "rajesh@nexushealth.in", "+91 9822001122", "Kalyani Nagar, Pune", "Healthcare Tech", "Active", "Enterprise Hospital Telemedicine platform contract."),
+        ("KC-CLI-102", "FinEdge Wealth Advisory", "Meera Nair", "meera@finedge.com", "+91 9845012345", "Bandra Kurla Complex, Mumbai", "FinTech", "Active", "AI Investment portfolio analytics engine."),
+        ("KC-CLI-103", "Vertex Logistics Pvt Ltd", "Vikram Rathore", "vikram@vertexlogistics.io", "+91 9920198765", "Viman Nagar, Pune", "Supply Chain", "Active", "Fleet Tracking & Automated Route Dispatch."),
+        ("KC-CLI-104", "EduNova Learning Solutions", "Priya Sharma", "priya@edunova.ac.in", "+91 9422033445", "Shivajinagar, Pune", "EdTech", "Proposal Sent", "Interactive LMS with Exam Proctoring engine."),
+        ("KC-CLI-105", "Apex Retail Global", "Amitabh Sen", "amitabh@apexretail.in", "+91 9123456780", "Hinjewadi Phase 2, Pune", "E-Commerce", "Negotiation", "Multi-vendor B2B marketplace.")
+    ]
+    for c in clients_data:
+        cursor.execute('''
+            INSERT INTO clients (client_id, company_name, contact_person, email, phone, address, industry, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', c)
+
+    # 7. Projects
+    projects_data = [
+        ("KC-PRJ-201", "Nexus Clinical Telehealth Suite", 1, "Nexus Health Systems", "HIPAA-compliant video telemedicine, automated EHR syncing, and AI diagnostic notes generator.", 2, "Rohit Verma", json.dumps(["Siddharth Patil", "Pooja Kulkarni", "Tanvi Joshi"]), "2026-06-01", "2026-09-30", "Active", "High", 750000, 72),
+        ("KC-PRJ-202", "FinEdge AI Portfolio Analytics", 2, "FinEdge Wealth Advisory", "Real-time algorithmic risk modeling, predictive equity indicators, and automated tax reporting.", 3, "Ananya Deshmukh", json.dumps(["Aditya Shinde", "Gaurav More", "Siddharth Patil"]), "2026-07-15", "2026-10-15", "Active", "High", 920000, 58),
+        ("KC-PRJ-203", "Vertex Smart Fleet Dispatcher", 3, "Vertex Logistics Pvt Ltd", "IoT telematics dashboard, fuel optimization, and automated warehouse loading queues.", 2, "Rohit Verma", json.dumps(["Aditya Shinde", "Siddharth Patil"]), "2026-05-10", "2026-08-30", "Active", "Medium", 640000, 88),
+        ("KC-PRJ-204", "EduNova Virtual Class Cloud", 4, "EduNova Learning Solutions", "Scalable live streaming classroom with AI plagiarism checks and interactive coding IDE.", 3, "Ananya Deshmukh", json.dumps(["Pooja Kulkarni", "Tanvi Joshi"]), "2026-08-01", "2026-11-30", "Planning", "Medium", 480000, 20)
+    ]
+    for p in projects_data:
+        cursor.execute('''
+            INSERT INTO projects (project_id, name, client_id, client_name, description, manager_id, manager_name, team_members, start_date, deadline, status, priority, budget, progress)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', p)
+
+    # 8. Tasks
+    tasks_data = [
+        ("KC-TSK-501", "Finalize E-Signature Canvas for Prescriptions", "Implement HTML5 canvas signature capture with cryptographic verification stamp.", "KC-PRJ-201", "Nexus Clinical Telehealth Suite", 3, 2, "Rohit Verma", 4, "Siddharth Patil", "High", "In Progress", "2026-08-10", "2026-08-20", 16, 12, "Frontend, Security, Canvas", "", "", ""),
+        ("KC-TSK-502", "Refactor Prescription Modal UI & Responsive Flow", "Ensure modal behaves smoothly on mobile iPad and tablet devices for doctors on duty.", "KC-PRJ-201", "Nexus Clinical Telehealth Suite", 3, 2, "Rohit Verma", 5, "Pooja Kulkarni", "Medium", "Submitted", "2026-08-12", "2026-08-19", 12, 10, "UI/UX, Responsive", "Completed full Figma alignment and submitted for manager approval.", "https://github.com/kapate/nexus-telehealth/pull/42", "Reviewing responsive breakpoints."),
+        ("KC-TSK-503", "Unit Tests for FHIR Patient Profile Importer", "Build pytest suite ensuring 95%+ coverage for XML and JSON medical record ingestion.", "KC-PRJ-201", "Nexus Clinical Telehealth Suite", 4, 2, "Rohit Verma", 7, "Tanvi Joshi", "Medium", "In Progress", "2026-08-14", "2026-08-24", 20, 14, "Testing, Python, FHIR", "", "", ""),
+        ("KC-TSK-504", "WebSocket Broker Feed Ingestion Pipeline", "Stream tick-by-tick market data into Redis buffer with sub-millisecond latency.", "KC-PRJ-202", "FinEdge AI Portfolio Analytics", 6, 3, "Ananya Deshmukh", 6, "Aditya Shinde", "High", "In Progress", "2026-08-08", "2026-08-22", 24, 18, "Backend, Redis, WebSocket", "", "", ""),
+        ("KC-TSK-505", "Implement Mean-Variance Optimization Engine", "Develop Python NumPy portfolio frontier solver with custom user risk tolerance slider.", "KC-PRJ-202", "FinEdge AI Portfolio Analytics", 5, 3, "Ananya Deshmukh", 8, "Gaurav More", "Medium", "Submitted", "2026-08-06", "2026-08-18", 18, 16, "AI/ML, Math, Python", "Completed the optimization math engine and verified against benchmark portfolio data.", "https://github.com/kapate/finedge-ai/pull/18", ""),
+        ("KC-TSK-506", "Deploy GPS Live Telematics Microservice on AWS ECS", "Configure Docker container, ALB health checks, and auto-scaling group for Vertex fleet.", "KC-PRJ-203", "Vertex Smart Fleet Dispatcher", 0, 2, "Rohit Verma", 6, "Aditya Shinde", "High", "Approved", "2026-08-01", "2026-08-15", 30, 28, "DevOps, AWS, Docker", "Service deployed live in production cluster. Verified 99.99% uptime.", "", "Outstanding deployment work Aditya! Approved for release."),
+        ("KC-TSK-507", "Initial Design Tokens & Component Library for EduNova", "Establish color hierarchy, dark/light palette tokens, and icon system for LMS.", "KC-PRJ-204", "EduNova Virtual Class Cloud", 0, 3, "Ananya Deshmukh", 5, "Pooja Kulkarni", "Low", "Assigned", "2026-08-18", "2026-08-28", 14, 0, "Design System, Figma", "", "", "")
+    ]
+    for t in tasks_data:
+        cursor.execute('''
+            INSERT INTO tasks (task_id, title, description, project_id, project_name, milestone_id, assigned_by_id, assigned_by_name, assigned_to_id, assigned_to_name, priority, status, start_date, deadline, estimated_hours, actual_hours, tags, submission_notes, submission_url, manager_review_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', t)
+
+    # 9. Internal Messages
+    messages_data = [
+        (2, "Rohit Verma", "manager01", 4, "Siddharth Patil", "employee01", "Sprint Review & Nexus Telehealth Release", "Hi Siddharth,\nPlease ensure the prescription signing workflow is tested with sample medical licenses by Friday afternoon. The client demo is scheduled for Monday at 10 AM.\n\nBest regards,\nRohit", "inbox", 0, 1),
+        (1, "Shon Kapate", "ceo", 2, "Rohit Verma", "manager01", "Q3 Architecture Roadmap & Client Approvals", "Rohit,\nGreat work on delivering the Vertex Logistics cluster ahead of schedule. Let us review the EduNova proposal numbers during tomorrow morning's executive sync.\n\n- Shon Kapate", "inbox", 1, 1),
+        (3, "Ananya Deshmukh", "manager02", 8, "Gaurav More", "intern01", "Internship Module 8 Feedback & Commendation", "Gaurav,\nYour portfolio optimization Python algorithm was very clean and well documented. Keep up the high standard of work!\n\nBest,\nAnanya", "inbox", 0, 0),
+        (4, "Siddharth Patil", "employee01", 2, "Rohit Verma", "manager01", "Re: Sprint Review & Nexus Telehealth Release", "Hi Rohit,\nWorking on the e-signature canvas now. Will have end-to-end integration complete by tomorrow evening.", "sent", 1, 0)
+    ]
+    for m in messages_data:
+        cursor.execute('''
+            INSERT INTO internal_messages (sender_id, sender_name, sender_username, receiver_id, receiver_name, receiver_username, subject, body, folder, is_read, is_starred)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', m)
+
+    # 10. Chat Channels & Messages
+    cursor.execute('''
+        INSERT INTO chat_channels (channel_id, name, channel_type, members_json)
+        VALUES 
+        ('chan-general', 'Company General', 'general', '["all"]'),
+        ('chan-engineering', 'Engineering & DevOps', 'general', '["ceo", "manager01", "employee01", "employee03", "intern01"]'),
+        ('chan-prj-nexus', 'Nexus Telehealth Dev', 'project', '["manager01", "employee01", "employee02", "intern01"]'),
+        ('chan-ai-lab', 'AI & ML Lab', 'general', '["ceo", "manager02", "employee03", "intern02"]')
+    ''')
+
+    cursor.execute('''
+        INSERT INTO chat_messages (channel_id, sender_id, sender_name, sender_role, message)
+        VALUES 
+        ('chan-general', 1, 'Shon Kapate', 'CEO', 'Welcome team to the Kapate Workspace Control Center. Operations and metrics are active.'),
+        ('chan-general', 2, 'Rohit Verma', 'Manager', 'Engineering team ready. Morning attendance logged.'),
+        ('chan-engineering', 6, 'Aditya Shinde', 'Employee', 'AWS ECS production cluster healthy with all nodes green.')
+    ''')
+
+    # 11. Company Files
+    files_data = [
+        ("HR", "Policy", "Kapate_Employee_Handbook_2026.pdf", "1.4 MB", "PDF", "Shon Kapate", "CEO", "All", "/files/handbook.pdf"),
+        ("Finance", "Statements", "Q2_Audited_Financial_Statement.pdf", "2.8 MB", "PDF", "Shon Kapate", "CEO", "CEO", "/files/q2_finance.pdf"),
+        ("Templates", "Proposals", "Master_Consulting_Agreement_Template.docx", "450 KB", "DOCX", "Shon Kapate", "CEO", "Manager", "/files/contract_tmpl.docx"),
+        ("Projects", "Nexus Health", "Nexus_System_Architecture_V3.pdf", "3.2 MB", "PDF", "Rohit Verma", "Manager", "All", "/files/nexus_arch.pdf"),
+        ("Projects", "FinEdge", "Algorithmic_Trading_API_Spec.pdf", "1.8 MB", "PDF", "Ananya Deshmukh", "Manager", "All", "/files/finedge_api.pdf"),
+        ("Internal", "Security", "SOC2_Compliance_Checklist_2026.xlsx", "890 KB", "XLSX", "Aditya Shinde", "Employee", "All", "/files/soc2.xlsx")
+    ]
+    for f in files_data:
+        cursor.execute('''
+            INSERT INTO company_files (folder, subfolder, name, file_size, file_type, uploaded_by, uploader_role, access_roles, download_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', f)
+
+    # 12. Proposals
+    proposals_data = [
+        ("KC-PRO-801", "KC-CLI-104", "EduNova Learning Solutions", "EduNova Virtual Class Cloud", "Next.js Web App, WebRTC Streaming, AI Proctoring Engine, AWS Infrastructure", "End-to-end interactive cloud classroom with multi-tenant student billing.", 480000, "16 Weeks", "30% Advance, 40% Milestone 2, 30% Deployment", "Standard 1-year SLA with 99.9% uptime guarantee.", "Sent"),
+        ("KC-PRO-802", "KC-CLI-105", "Apex Retail Global", "Apex B2B Marketplace Portal", "Microservices Backend, Flutter Mobile Apps, Payment Gateway, Inventory Sync", "Complete digital transformation of distributor wholesale catalog.", 850000, "20 Weeks", "25% Advance, 50% Staged, 25% Handover", "Post-deployment 6-month warranty included.", "Draft")
+    ]
+    for pr in proposals_data:
+        cursor.execute('''
+            INSERT INTO proposals (proposal_id, client_id, client_name, project_name, services, description, pricing, timeline, terms, payment_schedule, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', pr)
+
+    # 13. Invoices
+    inv_items_1 = json.dumps([
+        {"item": "Milestone 2 - WebRTC Video & Chat Core", "qty": 1, "rate": 250000, "amount": 250000},
+        {"item": "HIPAA Cloud Compliance Hardening & Audit", "qty": 1, "rate": 80000, "amount": 80000}
+    ])
+    inv_items_2 = json.dumps([
+        {"item": "Milestone 1 - Historical Risk Backtesting Model", "qty": 1, "rate": 350000, "amount": 350000},
+        {"item": "Real-time Tick Data Buffer Setup (Redis)", "qty": 1, "rate": 100000, "amount": 100000}
+    ])
+    invoices_data = [
+        ("KC-INV-901", "KC-CLI-101", "Nexus Health Systems", "KC-PRJ-201", "Nexus Clinical Telehealth Suite", inv_items_1, 330000, 18.0, 59400, 0, 389400, "2026-08-30", "Paid", "Milestone 2 invoice cleared via NEFT transfer."),
+        ("KC-INV-902", "KC-CLI-102", "FinEdge Wealth Advisory", "KC-PRJ-202", "FinEdge AI Portfolio Analytics", inv_items_2, 450000, 18.0, 81000, 10000, 521000, "2026-08-25", "Sent", "Milestone 1 completion invoice dispatched to finance department.")
+    ]
+    for inv in invoices_data:
+        cursor.execute('''
+            INSERT INTO invoices (invoice_no, client_id, client_name, project_id, project_name, items_json, subtotal, tax_rate, tax_amount, discount, total, due_date, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', inv)
+
+    # 14. Attendance
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+    attendance_data = [
+        ("EMP-001", "Shon Kapate", today_str, "08:45 AM", "", 0, "Present"),
+        ("EMP-002", "Rohit Verma", today_str, "09:00 AM", "", 0, "Present"),
+        ("EMP-003", "Ananya Deshmukh", today_str, "09:10 AM", "", 0, "Present"),
+        ("EMP-004", "Siddharth Patil", today_str, "09:15 AM", "", 0, "Present"),
+        ("EMP-005", "Pooja Kulkarni", today_str, "09:30 AM", "", 0, "Present"),
+        ("EMP-006", "Aditya Shinde", today_str, "09:05 AM", "", 0, "Present"),
+        ("INT-007", "Tanvi Joshi", today_str, "09:40 AM", "", 0, "Present"),
+        ("INT-008", "Gaurav More", today_str, "09:45 AM", "", 0, "Present")
+    ]
+    for att in attendance_data:
+        cursor.execute('''
+            INSERT INTO attendance (emp_id, emp_name, date, clock_in, clock_out, total_hours, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', att)
+
+    # 15. Leave Requests
+    leaves_data = [
+        ("EMP-004", "Siddharth Patil", "Casual Leave", "2026-08-28", "2026-08-29", "Family gathering in hometown.", "Approved", "Rohit Verma", "Approved. Tasks have been scheduled around the dates."),
+        ("INT-007", "Tanvi Joshi", "Internship Exam", "2026-09-05", "2026-09-07", "College final semester practical exams.", "Pending", "", "")
+    ]
+    for lv in leaves_data:
+        cursor.execute('''
+            INSERT INTO leave_requests (emp_id, emp_name, leave_type, start_date, end_date, reason, status, reviewed_by, review_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', lv)
+
+    # 16. Meetings
+    meetings_data = [
+        ("Nexus Telehealth Client Demonstration", 2, "Rohit Verma", json.dumps(["Shon Kapate", "Rohit Verma", "Siddharth Patil", "Pooja Kulkarni"]), "2026-08-24", "10:00 AM", "https://meet.google.com/kap-telehealth", "Demonstrate completed e-signature and telehealth video room to client executives.", "Prepare staging environment with sample doctor patient profiles.", json.dumps(["Verify camera microphone switching", "Prepare PDF signature certificate demo"])),
+        ("Q3 AI Solutions Technical Roadmap", 3, "Ananya Deshmukh", json.dumps(["Shon Kapate", "Ananya Deshmukh", "Aditya Shinde", "Gaurav More"]), "2026-08-25", "03:00 PM", "https://meet.google.com/kap-ai-roadmap", "Review model inference latency benchmarks on AWS Inferentia clusters.", "Bring GPU utilization graphs.", json.dumps(["Benchmark FP16 vs INT8 quantization"]))
+    ]
+    for mt in meetings_data:
+        cursor.execute('''
+            INSERT INTO meetings (title, organizer_id, organizer_name, participants_json, meeting_date, meeting_time, location_link, agenda, notes, action_items_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', mt)
+
+    # 17. Internships
+    int_modules_1 = json.dumps([
+        {"id": 1, "title": "Modern Frontend Architecture & ES6+", "status": "Completed", "score": 95},
+        {"id": 2, "title": "State Management & Responsive CSS Design", "status": "Completed", "score": 92},
+        {"id": 3, "title": "REST API Integration & Authentication", "status": "Completed", "score": 94},
+        {"id": 4, "title": "FHIR Healthcare Data Protocols", "status": "In Progress", "score": 88},
+        {"id": 5, "title": "Unit & Integration Testing with PyTest / Jest", "status": "Pending", "score": 0}
+    ])
+    int_modules_2 = json.dumps([
+        {"id": 1, "title": "Applied Linear Algebra & NumPy Foundations", "status": "Completed", "score": 98},
+        {"id": 2, "title": "Financial Time Series Modeling & Pandas", "status": "Completed", "score": 96},
+        {"id": 3, "title": "Portfolio Optimization & Risk Theory", "status": "Completed", "score": 95},
+        {"id": 4, "title": "Real-Time WebSocket Inference Pipelines", "status": "In Progress", "score": 90},
+        {"id": 5, "title": "Model Serving & Docker Deployment", "status": "Pending", "score": 0}
+    ])
+    cursor.execute('''
+        INSERT INTO internship_details (intern_id, intern_name, mentor_id, mentor_name, department, start_date, end_date, progress_percent, modules_json, feedback, certificate_status)
+        VALUES 
+        ('INT-007', 'Tanvi Joshi', 2, 'Rohit Verma', 'Software Development', '2026-06-01', '2026-11-30', 80, ?, 'Consistent effort and high code quality in frontend components.', 'In Progress'),
+        ('INT-008', 'Gaurav More', 3, 'Ananya Deshmukh', 'AI & Machine Learning', '2026-06-15', '2026-12-15', 85, ?, 'Exceptional mathematical rigor in algorithmic risk calculations.', 'In Progress')
+    ''', (int_modules_1, int_modules_2))
+
+    # 18. Announcements
+    cursor.execute('''
+        INSERT INTO announcements (title, content, target_audience, priority, author_name, author_role)
+        VALUES 
+        ('Launch of Kapate Enterprise Workspace Control Center', 'All administrative, engineering, and HR workflows have been consolidated into the unified Workspace platform.', 'All', 'High', 'Shon Kapate', 'CEO'),
+        ('Monthly All-Hands Technical Townhall', 'Our Q3 Technical Townhall is scheduled for this Friday at 4:30 PM. Lead architects will present project impact metrics.', 'All', 'Normal', 'Rohit Verma', 'Manager')
+    ''')
+
+    # 19. Initial Audit Logs
+    cursor.execute('''
+        INSERT INTO audit_logs (user_name, action, entity, entity_id, old_value, new_value, ip_address, reason)
+        VALUES 
+        ('system', 'System Initialized', 'Workspace Database', '0', '', 'Initial Schema Loaded', '127.0.0.1', 'Bootstrap'),
+        ('Shon Kapate', 'CEO Session Activated', 'users', 'EMP-001', '', 'Executive Control Center Ready', '127.0.0.1', 'Login')
+    ''')
+
     conn.commit()
     conn.close()
+    print("Seeding complete.")
 
-# Initialize on load
-init_db()
-
-def generate_reference_number():
-    year = datetime.datetime.now().year
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    while True:
-        # Format: KC-YYYY-XXXX (where XXXX is a random 4-digit number)
-        rand_val = random.randint(1000, 9999)
-        ref_num = f"KC-{year}-{rand_val}"
-        
-        # Check uniqueness
-        cursor.execute("SELECT 1 FROM inquiries WHERE reference_number = ?", (ref_num,))
-        if not cursor.fetchone():
-            conn.close()
-            return ref_num
-
-def send_confirmation_email(config, recipient_email, recipient_name, ref_num, service, message):
-    sender_email = config.get("SMTP_EMAIL")
-    sender_password = config.get("SMTP_PASSWORD")
-    smtp_server = config.get("SMTP_SERVER")
-    smtp_port = config.get("SMTP_PORT")
-    
-    if not sender_email or not sender_password:
-        print("SMTP email or password is empty. Skipping email confirmation.")
-        return False
-        
-    try:
-        # Create message container
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"Inquiry Registered: {ref_num} - Kapate Consultancy"
-        msg['From'] = f"Kapate Consultancy <{sender_email}>"
-        msg['To'] = recipient_email
-        
-        # Map service key to readable text
-        service_mapping = {
-            "webdev": "Website Development",
-            "software": "Software & Application Development",
-            "aiml": "AI & Machine Learning Solutions",
-            "analytics": "Data Analytics & Insights",
-            "academic": "College / Final-Year Project Support",
-            "cloud": "Cloud Services"
+# Authentication Helper
+def get_current_user():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header:
+        return None
+    token = auth_header.replace('Bearer ', '').strip()
+    if token in SESSION_TOKENS:
+        return SESSION_TOKENS[token]
+    if token == "kapate-admin-secure-token-98765":
+        return {
+            "id": 1,
+            "emp_code": "EMP-001",
+            "username": "ceo",
+            "email": "ceo@internal.kapate",
+            "name": "Shon Kapate",
+            "role": "CEO",
+            "department": "Executive & Management"
         }
-        service_name = service_mapping.get(service, service.capitalize())
+    return None
 
-        # Email body (HTML)
-        html = f"""
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: 'Inter', Arial, sans-serif;
-                    background-color: #f8fafc;
-                    color: #0f172a;
-                    margin: 0;
-                    padding: 40px 0;
-                }}
-                .container {{
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: #ffffff;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-                }}
-                .header {{
-                    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-                    color: #ffffff;
-                    padding: 30px;
-                    text-align: center;
-                }}
-                .header h1 {{
-                    margin: 0;
-                    font-size: 24px;
-                    font-weight: 700;
-                }}
-                .content {{
-                    padding: 35px;
-                    line-height: 1.6;
-                    font-size: 15px;
-                }}
-                .ref-badge {{
-                    display: inline-block;
-                    background-color: #ecfeff;
-                    color: #0891b2;
-                    font-weight: 700;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    border: 1px solid #cffafe;
-                    font-size: 16px;
-                    margin: 15px 0;
-                }}
-                .summary-table {{
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 25px 0;
-                }}
-                .summary-table td {{
-                    padding: 10px;
-                    border-bottom: 1px solid #f1f5f9;
-                }}
-                .summary-table td.label {{
-                    font-weight: 600;
-                    color: #475569;
-                    width: 130px;
-                }}
-                .footer {{
-                    background-color: #f8fafc;
-                    padding: 20px 35px;
-                    border-top: 1px solid #e2e8f0;
-                    font-size: 12px;
-                    color: #64748b;
-                    text-align: center;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Kapate Consultancy</h1>
-                </div>
-                <div class="content">
-                    <p>Dear {recipient_name},</p>
-                    <p>Thank you for submitting your inquiry to Kapate Consultancy. We are excited to collaborate with you. Your request has been successfully registered and assigned the following reference ID:</p>
-                    
-                    <div class="ref-badge">{ref_num}</div>
-                    
-                    <p>Our senior technical associates will review your project requirements and reach back to you within 24 hours.</p>
-                    
-                    <h3>Inquiry Summary</h3>
-                    <table class="summary-table">
-                        <tr>
-                            <td class="label">Service Required</td>
-                            <td>{service_name}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">Message Summary</td>
-                            <td>{message}</td>
-                        </tr>
-                    </table>
-                    
-                    <p>If you have any supplementary documents or additional specifications, feel free to reply directly to this email.</p>
-                    <br>
-                    <p>Best regards,<br><strong>Kapate Consultancy Team</strong></p>
-                </div>
-                <div class="footer">
-                    <p>Software Engineering &bull; AI &bull; Cloud Infrastructure &bull; Academic Mentorship</p>
-                    <p>&copy; 2026 Kapate Consultancy. All rights reserved.</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        part = MIMEText(html, 'html')
-        msg.attach(part)
-        
-        # Connect and Send
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, recipient_email, msg.as_string())
-        server.quit()
-        print(f"Confirmation email successfully sent to {recipient_email}")
-        return True
-    except Exception as e:
-        print(f"SMTP Error: Failed to send confirmation email to {recipient_email}. Details: {e}")
-        return False
+def require_auth(allowed_roles=None):
+    user = get_current_user()
+    if not user:
+        return None, (jsonify({"success": False, "error": "Unauthorized. Please log in to Kapate Workspace."}), 401)
+    if allowed_roles and user.get('role') not in allowed_roles:
+        return None, (jsonify({"success": False, "error": f"Access denied. Required role: {', '.join(allowed_roles)}"}), 403)
+    return user, None
 
-# --------------------------------------------------------------------------
-# API Routes
-# --------------------------------------------------------------------------
+# ==============================================================================
+# WORKSPACE REST API ENDPOINTS
+# ==============================================================================
 
-@app.route('/')
-def index():
-    return app.send_static_file('index.html')
+# --- 1. Authentication ---
+@app.route('/api/workspace/auth/login', methods=['POST'])
+def workspace_login():
+    data = request.get_json(silent=True) or {}
+    identifier = data.get('username') or data.get('email', '').strip().lower()
+    password = data.get('password', '').strip()
 
-@app.route('/sitemap.xml')
-def sitemap():
-    return app.send_static_file('sitemap.xml')
+    if not identifier or not password:
+        return jsonify({"success": False, "error": "Username/Email and Password are required."}), 400
 
-@app.route('/robots.txt')
-def robots():
-    return app.send_static_file('robots.txt')
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM users 
+        WHERE LOWER(username) = ? OR LOWER(email) = ? OR LOWER(emp_code) = ?
+    ''', (identifier, identifier, identifier))
+    user_row = cursor.fetchone()
+    conn.close()
 
-@app.route('/manifest.json')
-def manifest():
-    return app.send_static_file('manifest.json')
+    if not user_row:
+        return jsonify({"success": False, "error": "Invalid credentials. User not found."}), 401
 
-@app.route('/sw.js')
-def service_worker():
-    response = app.send_static_file('sw.js')
-    response.headers['Content-Type'] = 'application/javascript'
-    response.headers['Cache-Control'] = 'no-cache'
-    return response
+    if not check_password_hash(user_row['password_hash'], password):
+        return jsonify({"success": False, "error": "Invalid password."}), 401
 
+    if user_row['status'] != 'Active':
+        return jsonify({"success": False, "error": f"Account is {user_row['status']}. Please contact CEO/Admin."}), 403
 
-@app.route('/api/inquiries', methods=['POST'])
-def create_inquiry():
-    data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "No input data provided"}), 400
-        
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
-    service = data.get('service', '').strip()
-    message = data.get('message', '').strip()
-    
-    if not name or not email or not message:
-        return jsonify({"success": False, "error": "Missing required fields (name, email, or message)"}), 400
-        
-    ref_num = generate_reference_number()
-    
-    try:
-        # Insert into SQLite Database (Inquiries)
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO inquiries (reference_number, name, email, service, message)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (ref_num, name, email, service, message))
-        inquiry_id = cursor.lastrowid
-        
-        # Lead scoring calculation
-        lead_score = min(95, 50 + (len(message) // 10) + (15 if service in ['aiml', 'cloud', 'software'] else 5))
-        priority = "Hot" if lead_score >= 75 else ("Warm" if lead_score >= 55 else "Cold")
-        
-        # Auto-create Lead record
-        cursor.execute('''
-            INSERT INTO leads (name, email, service, message, score, priority, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'New')
-        ''', (name, email, service, message, lead_score, priority))
-        
-        # Auto-create Notification
-        cursor.execute('''
-            INSERT INTO notifications (title, message, category)
-            VALUES (?, ?, 'info')
-        ''', (f"New Lead: {name}", f"Inquiry for {service.upper()} from {email} ({ref_num})"))
-        
-        # Auto-log Activity
-        cursor.execute('''
-            INSERT INTO activity_logs (user_name, action, details, icon)
-            VALUES (?, ?, ?, 'mail')
-        ''', ("System", f"Inquiry Received #{ref_num}", f"From {name} ({email})"))
-        
-        conn.commit()
-        conn.close()
-        
-        # Attempt to Send Automated Confirmation Email
-        config = load_config()
-        send_confirmation_email(config, email, name, ref_num, service, message)
-        
-        return jsonify({
-            "success": True, 
-            "reference_number": ref_num,
-            "id": inquiry_id
-        }), 201
-        
-    except Exception as e:
-        print(f"Database insertion error: {e}")
-        return jsonify({"success": False, "error": "Internal database error occurred"}), 500
+    token = f"kw-sess-{user_row['id']}-{random.randint(100000, 999999)}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    user_data = {
+        "id": user_row['id'],
+        "emp_code": user_row['emp_code'],
+        "username": user_row['username'],
+        "email": user_row['email'],
+        "name": user_row['name'],
+        "role": user_row['role'],
+        "department": user_row['department'],
+        "designation": user_row['designation'],
+        "manager_name": user_row['manager_name'],
+        "phone": user_row['phone']
+    }
+    SESSION_TOKENS[token] = user_data
 
-@app.route('/api/admin/login', methods=['POST'])
-def admin_login():
-    data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "Missing login credentials"}), 400
-        
-    password = data.get('password', '')
-    config = load_config()
-    
-    if password == config.get("ADMIN_PASSWORD"):
-        # Generate dummy token
-        return jsonify({
-            "success": True,
-            "token": "kapate-admin-secure-token-98765"
-        })
-    else:
-        return jsonify({
-            "success": False,
-            "error": "Invalid password credentials"
-        }), 401
+    audit_log(user_row['name'], "User Logged In", "users", user_row['emp_code'], ip_addr=request.remote_addr or "127.0.0.1", reason="User Authenticated")
 
-@app.route('/api/admin/inquiries', methods=['GET'])
-def get_inquiries():
-    auth_header = request.headers.get('Authorization', '')
-    config = load_config()
-    
-    # Simple check
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row  # Return rows as dict-like objects
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM inquiries ORDER BY created_at DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        
-        inquiries = []
-        for r in rows:
-            inquiries.append({
-                "id": r["id"],
-                "reference_number": r["reference_number"],
-                "name": r["name"],
-                "email": r["email"],
-                "service": r["service"],
-                "message": r["message"],
-                "status": r["status"],
-                "notes": r["notes"] if "notes" in r.keys() else "",
-                "created_at": r["created_at"]
-            })
-            
-        return jsonify(inquiries)
-    except Exception as e:
-        print(f"Error querying inquiries: {e}")
-        return jsonify({"error": "Database retrieval error"}), 500
-
-@app.route('/api/admin/inquiries/<int:inquiry_id>', methods=['PUT'])
-def update_inquiry_status(inquiry_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    data = request.json
-    if not data:
-        return jsonify({"error": "Missing parameters"}), 400
-        
-    new_status = data.get('status', '').strip()
-    valid_statuses = ['Pending', 'Reviewed', 'Contacted', 'Resolved']
-    
-    if new_status not in valid_statuses:
-        return jsonify({"error": "Invalid status value"}), 400
-        
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        
-        # Check existence
-        cursor.execute("SELECT 1 FROM inquiries WHERE id = ?", (inquiry_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Inquiry not found"}), 404
-            
-        cursor.execute("UPDATE inquiries SET status = ? WHERE id = ?", (new_status, inquiry_id))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "message": f"Inquiry status updated to {new_status}"})
-    except Exception as e:
-        print(f"Error updating status: {e}")
-        return jsonify({"error": "Database update error"}), 500
-
-@app.route('/api/admin/inquiries/<int:inquiry_id>/notes', methods=['PUT'])
-def update_inquiry_notes(inquiry_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    data = request.json
-    if not data:
-        return jsonify({"error": "Missing parameters"}), 400
-        
-    new_notes = data.get('notes', '')
-    
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        
-        # Check existence
-        cursor.execute("SELECT 1 FROM inquiries WHERE id = ?", (inquiry_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Inquiry not found"}), 404
-            
-        cursor.execute("UPDATE inquiries SET notes = ? WHERE id = ?", (new_notes, inquiry_id))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "message": "Inquiry notes updated successfully"})
-    except Exception as e:
-        print(f"Error updating notes: {e}")
-        return jsonify({"error": "Database notes update error"}), 500
-
-@app.route('/api/admin/inquiries/<int:inquiry_id>', methods=['DELETE'])
-def delete_inquiry(inquiry_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        
-        # Check existence
-        cursor.execute("SELECT 1 FROM inquiries WHERE id = ?", (inquiry_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Inquiry not found"}), 404
-            
-        cursor.execute("DELETE FROM inquiries WHERE id = ?", (inquiry_id,))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "message": "Inquiry successfully deleted"})
-    except Exception as e:
-        print(f"Error deleting inquiry: {e}")
-        return jsonify({"error": "Database deletion error"}), 500
-
-@app.route('/api/admin/settings', methods=['GET'])
-def get_settings():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    config = load_config()
-    
-    # Do not return actual SMTP password, return a boolean flag indicating if set
     return jsonify({
-        "SMTP_SERVER": config.get("SMTP_SERVER", ""),
-        "SMTP_PORT": config.get("SMTP_PORT", 587),
-        "SMTP_EMAIL": config.get("SMTP_EMAIL", ""),
-        "SMTP_PASSWORD_SET": bool(config.get("SMTP_PASSWORD", ""))
+        "success": True,
+        "token": token,
+        "user": user_data
     })
 
-@app.route('/api/admin/settings', methods=['PUT'])
-def update_settings():
+@app.route('/api/workspace/auth/me', methods=['GET', 'POST'])
+def workspace_auth_me():
+    user, err = require_auth()
+    if err: return err
+    return jsonify({"success": True, "user": user})
+
+@app.route('/api/workspace/auth/logout', methods=['POST'])
+def workspace_logout():
     auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    data = request.json
-    if not data:
-        return jsonify({"error": "Missing parameters"}), 400
-        
-    config = load_config()
-    
-    # Update fields
-    config["SMTP_SERVER"] = data.get("SMTP_SERVER", config.get("SMTP_SERVER", ""))
-    config["SMTP_PORT"] = int(data.get("SMTP_PORT", config.get("SMTP_PORT", 587)))
-    config["SMTP_EMAIL"] = data.get("SMTP_EMAIL", config.get("SMTP_EMAIL", ""))
-    
-    # Only update password if a new one is provided (not empty/masked)
-    new_password = data.get("SMTP_PASSWORD", "")
-    if new_password:
-        config["SMTP_PASSWORD"] = new_password
-        
-    new_admin_password = data.get("ADMIN_PASSWORD", "")
-    if new_admin_password:
-        config["ADMIN_PASSWORD"] = new_admin_password
-        
-    try:
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config, f, indent=4)
-        return jsonify({"success": True, "message": "Settings updated successfully"})
-    except Exception as e:
-        print(f"Error saving settings: {e}")
-        return jsonify({"error": "Failed to save settings file"}), 500
+    token = auth_header.replace('Bearer ', '').strip()
+    if token in SESSION_TOKENS:
+        user = SESSION_TOKENS.pop(token)
+        audit_log(user.get('name', 'User'), "User Logged Out", "users", user.get('emp_code', ''))
+    return jsonify({"success": True, "message": "Successfully logged out."})
 
-@app.route('/api/admin/settings/test-email', methods=['POST'])
-def send_test_email():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    data = request.json
-    if not data:
-        return jsonify({"error": "Missing parameters"}), 400
-        
-    recipient = data.get("recipient_email", "").strip()
-    if not recipient:
-        return jsonify({"error": "Missing recipient email"}), 400
-        
-    config = load_config()
-    sender_email = config.get("SMTP_EMAIL")
-    sender_password = config.get("SMTP_PASSWORD")
-    smtp_server = config.get("SMTP_SERVER")
-    smtp_port = config.get("SMTP_PORT")
-    
-    if not sender_email or not sender_password:
-        return jsonify({"error": "SMTP Email or Password is not configured"}), 400
-        
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = "SMTP Test Connection - Kapate Consultancy"
-        msg['From'] = f"Kapate Consultancy <{sender_email}>"
-        msg['To'] = recipient
-        
-        html = f"""
-        <html>
-        <body>
-            <h3>SMTP Test Connection Successful!</h3>
-            <p>Your SMTP mail configurations are correct. Emails are successfully routing from <strong>{sender_email}</strong>.</p>
-            <p>Tested on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-        </body>
-        </html>
-        """
-        msg.attach(MIMEText(html, 'html'))
-        
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, recipient, msg.as_string())
-        server.quit()
-        
-        return jsonify({"success": True, "message": "Test email sent successfully!"})
-    except Exception as e:
-        print(f"Test SMTP Error: {e}")
-        return jsonify({"error": f"SMTP connection failed: {e}"}), 500
+# --- 2. CEO Needs Attention & Dashboard Metrics ---
+@app.route('/api/workspace/needs-attention', methods=['GET'])
+def workspace_needs_attention():
+    user, err = require_auth(['CEO', 'Manager'])
+    if err: return err
 
-@app.route('/api/admin/inquiries/<int:inquiry_id>/reply', methods=['POST'])
-def reply_to_inquiry(inquiry_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    data = request.json
-    if not data or not data.get('subject') or not data.get('message'):
-        return jsonify({"error": "Missing subject or message body"}), 400
-        
-    subject = data.get('subject').strip()
-    reply_message = data.get('message').strip()
-    
-    config = load_config()
-    sender_email = config.get("SMTP_EMAIL")
-    sender_password = config.get("SMTP_PASSWORD")
-    smtp_server = config.get("SMTP_SERVER")
-    smtp_port = config.get("SMTP_PORT")
-    
-    if not sender_email or not sender_password:
-        return jsonify({"error": "SMTP credentials are not configured"}), 400
-        
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, email, reference_number, service, message, notes FROM inquiries WHERE id = ?", (inquiry_id,))
-        row = cursor.fetchone()
-        
-        if not row:
-            conn.close()
-            return jsonify({"error": "Inquiry not found"}), 404
-            
-        client_name, client_email, ref_number, service, orig_message, current_notes = row
-        
-        # Build beautiful HTML body
-        html_content = f"""
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #333333;
-                    background-color: #f9f9f9;
-                    margin: 0;
-                    padding: 20px;
-                }}
-                .container {{
-                    max-width: 600px;
-                    background-color: #ffffff;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 8px;
-                    padding: 30px;
-                    margin: 0 auto;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-                }}
-                .header {{
-                    border-bottom: 2px solid #0f172a;
-                    padding-bottom: 15px;
-                    margin-bottom: 20px;
-                }}
-                .header h2 {{
-                    margin: 0;
-                    color: #0f172a;
-                    font-size: 22px;
-                }}
-                .message {{
-                    font-size: 16px;
-                    color: #1e293b;
-                    white-space: pre-line;
-                    margin-bottom: 30px;
-                }}
-                .quote-box {{
-                    background-color: #f1f5f9;
-                    border-left: 4px solid #64748b;
-                    padding: 15px;
-                    font-size: 14px;
-                    color: #475569;
-                    border-radius: 4px;
-                }}
-                .quote-title {{
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                    color: #334155;
-                }}
-                .footer {{
-                    margin-top: 30px;
-                    font-size: 12px;
-                    color: #94a3b8;
-                    border-top: 1px solid #e2e8f0;
-                    padding-top: 15px;
-                    text-align: center;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2>Kapate Consultancy</h2>
-                </div>
-                <div class="message">
-{reply_message}
-                </div>
-                
-                <div class="quote-box">
-                    <div class="quote-title">Original Inquiry Details ({ref_number}):</div>
-                    <p><strong>Name:</strong> {client_name}<br>
-                    <strong>Service:</strong> {service.capitalize()}<br>
-                    <strong>Message:</strong> {orig_message}</p>
-                </div>
-                
-                <div class="footer">
-                    <p>Kapate Consultancy &bull; Pune, Maharashtra, India<br>
-                    Phone: +91-8421174957 &bull; Web: www.kapateconsultancy.com</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Send via SMTP
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"Kapate Consultancy <{sender_email}>"
-        msg['To'] = client_email
-        msg.attach(MIMEText(html_content, 'html'))
-        
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, client_email, msg.as_string())
-        server.quit()
-        
-        # Update database notes with the communication log
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_entry = f"\n\n--- [Reply Sent on {timestamp}] ---\nSubject: {subject}\nMessage: {reply_message}"
-        new_notes = (current_notes or '') + log_entry
-        
-        cursor.execute("UPDATE inquiries SET notes = ? WHERE id = ?", (new_notes, inquiry_id))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            "success": True, 
-            "message": "Reply sent successfully!",
-            "updated_notes": new_notes
-        })
-        
-    except Exception as e:
-        print(f"Reply SMTP Error: {e}")
-        return jsonify({"error": f"Failed to send email reply: {e}"}), 500
-
-
-# --------------------------------------------------------------------------
-# Reviews API
-# --------------------------------------------------------------------------
-
-@app.route('/api/reviews', methods=['POST'])
-def submit_review():
-    """Public endpoint — anyone can submit a review (pending admin approval)."""
-    data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "No input data provided"}), 400
-
-    name        = data.get('name', '').strip()
-    role        = data.get('role', '').strip()
-    rating      = data.get('rating', 0)
-    review_text = data.get('review_text', '').strip()
-    service     = data.get('service', '').strip()
-
-    if not name or not role or not review_text:
-        return jsonify({"success": False, "error": "Name, role, and review text are required"}), 400
-
-    try:
-        rating = int(rating)
-        if not (1 <= rating <= 5):
-            return jsonify({"success": False, "error": "Rating must be between 1 and 5"}), 400
-    except (TypeError, ValueError):
-        return jsonify({"success": False, "error": "Invalid rating value"}), 400
-
-    # Basic length guards
-    if len(name) > 80 or len(role) > 100 or len(review_text) > 1000:
-        return jsonify({"success": False, "error": "Input exceeds maximum allowed length"}), 400
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO reviews (name, role, rating, review_text, service) VALUES (?, ?, ?, ?, ?)',
-            (name, role, rating, review_text, service)
-        )
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Review submitted successfully and is pending approval."}), 201
-    except Exception as e:
-        print(f"Review insert error: {e}")
-        return jsonify({"success": False, "error": "Database error"}), 500
-
-
-@app.route('/api/reviews', methods=['GET'])
-def get_approved_reviews():
-    """Public endpoint — returns only approved reviews."""
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute(
-            'SELECT id, name, role, rating, review_text, service, created_at FROM reviews WHERE approved = 1 ORDER BY created_at DESC'
-        )
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-    except Exception as e:
-        print(f"Review fetch error: {e}")
-        return jsonify({"error": "Database retrieval error"}), 500
-
-
-@app.route('/api/admin/reviews', methods=['GET'])
-def admin_get_reviews():
-    """Admin endpoint — returns all reviews (approved and pending)."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM reviews ORDER BY created_at DESC')
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-    except Exception as e:
-        print(f"Admin review fetch error: {e}")
-        return jsonify({"error": "Database retrieval error"}), 500
-
-
-@app.route('/api/admin/reviews/<int:review_id>/approve', methods=['PUT'])
-def approve_review(review_id):
-    """Admin endpoint — approve a pending review."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute('SELECT 1 FROM reviews WHERE id = ?', (review_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Review not found"}), 404
-        cursor.execute('UPDATE reviews SET approved = 1 WHERE id = ?', (review_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Review approved and published."})
-    except Exception as e:
-        print(f"Review approve error: {e}")
-        return jsonify({"error": "Database error"}), 500
-
-
-@app.route('/api/admin/reviews/<int:review_id>', methods=['DELETE'])
-def delete_review(review_id):
-    """Admin endpoint — delete a review."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute('SELECT 1 FROM reviews WHERE id = ?', (review_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Review not found"}), 404
-        cursor.execute('DELETE FROM reviews WHERE id = ?', (review_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Review deleted."})
-    except Exception as e:
-        print(f"Review delete error: {e}")
-        return jsonify({"error": "Database error"}), 500
-
-
-# --------------------------------------------------------------------------
-# ENTERPRISE SAAS CRM & DASHBOARD API ROUTES
-# --------------------------------------------------------------------------
-
-@app.route('/api/admin/analytics', methods=['GET'])
-def get_analytics():
-    """Returns real-time CRM KPIs, financial stats, and charts data."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-        
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT COUNT(*) FROM inquiries")
-        total_inquiries = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM clients")
-        total_clients = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM projects WHERE status != 'Completed'")
-        active_projects = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COALESCE(SUM(budget), 0) FROM projects")
-        total_revenue = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM leads WHERE priority = 'Hot'")
-        hot_leads = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM reviews WHERE approved = 1")
-        approved_reviews = cursor.fetchone()[0]
-        
-        conn.close()
-
-        # Generate realistic monthly revenue curve for Chart.js
-        monthly_growth = {
-            "labels": ["Mar", "Apr", "May", "Jun", "Jul", "Aug"],
-            "revenue": [45000, 62000, 85000, 110000, 145000, total_revenue if total_revenue > 0 else 180000],
-            "clients": [2, 4, 7, 9, 12, total_clients if total_clients > 0 else 15]
-        }
-
-        # Conversion funnel & service breakdown
-        services_chart = {
-            "labels": ["Web Development", "AI/ML Solutions", "Cloud Infra", "Academic Mentorship", "Data Analytics"],
-            "counts": [40, 25, 15, 12, 8]
-        }
-
-        return jsonify({
-            "success": True,
-            "kpis": {
-                "total_inquiries": total_inquiries,
-                "total_clients": total_clients,
-                "active_projects": active_projects,
-                "total_revenue": total_revenue,
-                "hot_leads": hot_leads,
-                "approved_reviews": approved_reviews,
-                "conversion_rate": "38.5%"
-            },
-            "monthly_growth": monthly_growth,
-            "services_chart": services_chart
-        })
-    except Exception as e:
-        print(f"Analytics query error: {e}")
-        return jsonify({"error": "Failed to fetch analytics"}), 500
-
-
-@app.route('/api/admin/clients', methods=['GET', 'POST'])
-@app.route('/api/erp/clients', methods=['GET', 'POST'])
-def manage_clients():
-    """Get all clients or create a new client."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    if request.method == 'GET':
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM clients ORDER BY created_at DESC")
-            rows = cursor.fetchall()
-            conn.close()
-            return jsonify([dict(r) for r in rows])
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-    elif request.method == 'POST':
-        data = request.json
-        if not data or not data.get('name') or not data.get('email'):
-            return jsonify({"error": "Name and email are required"}), 400
-            
-        name = data.get('name').strip()
-        email = data.get('email').strip()
-        phone = data.get('phone', '').strip()
-        company = data.get('company', '').strip()
-        tag = data.get('tag', 'Lead').strip()
-        status = data.get('status', 'Contacted').strip()
-        notes = data.get('notes', '').strip()
-        spent = float(data.get('total_spent', 0.0))
-
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO clients (name, email, phone, company, tag, status, total_spent, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (name, email, phone, company, tag, status, spent, notes)
-            )
-            client_id = cursor.lastrowid
-            
-            # Log activity
-            cursor.execute(
-                "INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                ("Admin", f"Client Added: {name}", f"Created profile for {company or name}", "user-plus")
-            )
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Client created successfully", "id": client_id}), 201
-        except sqlite3.IntegrityError:
-            return jsonify({"error": "A client with this email already exists"}), 400
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/clients/<int:client_id>', methods=['PUT', 'DELETE'])
-@app.route('/api/erp/clients/<int:client_id>', methods=['PUT', 'DELETE'])
-def update_delete_client(client_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    if request.method == 'DELETE':
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM clients WHERE id = ?", (client_id,))
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Client deleted successfully"})
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-    elif request.method == 'PUT':
-        data = request.json
-        if not data:
-            return jsonify({"error": "No update payload"}), 400
-            
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE clients SET name=?, email=?, phone=?, company=?, tag=?, status=?, total_spent=?, notes=? WHERE id=?",
-                (data.get('name'), data.get('email'), data.get('phone', ''), data.get('company', ''),
-                 data.get('tag', 'Lead'), data.get('status', 'Contacted'), data.get('total_spent', 0), data.get('notes', ''), client_id)
-            )
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Client profile updated"})
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/projects', methods=['GET', 'POST'])
-@app.route('/api/erp/projects', methods=['GET', 'POST'])
-def manage_projects():
-    """Get all Kanban projects or create a new project."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    if request.method == 'GET':
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM projects ORDER BY created_at DESC")
-            rows = cursor.fetchall()
-            conn.close()
-            return jsonify([dict(r) for r in rows])
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-    elif request.method == 'POST':
-        data = request.json
-        if not data or not data.get('title') or not data.get('client_name'):
-            return jsonify({"error": "Project title and client name are required"}), 400
-
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO projects (title, client_name, client_email, service, budget, status, progress, deadline, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (data.get('title').strip(), data.get('client_name').strip(), data.get('client_email', '').strip(),
-                 data.get('service', 'webdev'), float(data.get('budget', 0)), data.get('status', 'Pending'),
-                 int(data.get('progress', 0)), data.get('deadline', ''), data.get('notes', ''))
-            )
-            project_id = cursor.lastrowid
-            
-            # Log Activity
-            cursor.execute(
-                "INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                ("Admin", f"Project Created: {data.get('title')}", f"Assigned to {data.get('client_name')}", "briefcase")
-            )
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Project created successfully", "id": project_id}), 201
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/projects/<int:project_id>/status', methods=['PUT'])
-def update_project_status(project_id):
-    """Kanban drag & drop endpoint — update status and progress."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    data = request.json
-    if not data or 'status' not in data:
-        return jsonify({"error": "Missing status parameter"}), 400
-
-    new_status = data.get('status').strip()
-    valid_statuses = ['Pending', 'In Progress', 'Review', 'Completed']
-    if new_status not in valid_statuses:
-        return jsonify({"error": "Invalid status value"}), 400
-
-    progress_map = {'Pending': 10, 'In Progress': 50, 'Review': 85, 'Completed': 100}
-    progress = data.get('progress', progress_map.get(new_status, 50))
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE projects SET status = ?, progress = ? WHERE id = ?", (new_status, progress, project_id))
-        
-        # Log status transition activity
-        cursor.execute(
-            "INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-            ("Admin", f"Kanban Moved: Project #{project_id}", f"Moved project to {new_status}", "layers")
-        )
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": f"Project status updated to {new_status}"})
-    except Exception as e:
-        return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/leads', methods=['GET', 'POST'])
-def manage_leads():
-    """Get all leads or manually create a lead."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    if request.method == 'GET':
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM leads ORDER BY created_at DESC")
-            rows = cursor.fetchall()
-            conn.close()
-            return jsonify([dict(r) for r in rows])
-        except Exception as e:
-            return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/activity', methods=['GET'])
-def get_activity_logs():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 30")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-    except Exception as e:
-        return jsonify({"error": f"Database error: {e}"}), 500
-
-
-@app.route('/api/admin/notifications', methods=['GET', 'PUT'])
-def handle_notifications():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
+    conn = get_db()
     cursor = conn.cursor()
 
-    if request.method == 'GET':
-        cursor.execute("SELECT * FROM notifications ORDER BY created_at DESC LIMIT 15")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-    elif request.method == 'PUT':
-        cursor.execute("UPDATE notifications SET is_read = 1")
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Notifications marked as read"})
+    # Overdue tasks
+    cursor.execute("SELECT COUNT(*) FROM tasks WHERE deadline < date('now') AND status NOT IN ('Completed', 'Approved')")
+    overdue_tasks = cursor.fetchone()[0]
 
+    # Tasks pending approval
+    cursor.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Submitted'")
+    pending_approvals = cursor.fetchone()[0]
 
-@app.route('/api/admin/export/<export_type>', methods=['GET'])
-def export_data(export_type):
-    """Export inquiries, clients, projects, or leads as CSV format."""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    # Pending leaves
+    cursor.execute("SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending'")
+    pending_leaves = cursor.fetchone()[0]
 
-    valid_types = ['inquiries', 'clients', 'projects', 'leads']
-    if export_type not in valid_types:
-        return jsonify({"error": "Invalid export type"}), 400
+    # Overdue invoices
+    cursor.execute("SELECT COUNT(*) FROM invoices WHERE status = 'Sent' AND due_date < date('now')")
+    overdue_invoices = cursor.fetchone()[0]
 
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT * FROM {export_type} ORDER BY created_at DESC")
-        rows = cursor.fetchall()
-        conn.close()
+    # Projects approaching deadline in 14 days
+    cursor.execute("SELECT COUNT(*) FROM projects WHERE status = 'Active' AND deadline <= date('now', '+14 days')")
+    projects_at_risk = cursor.fetchone()[0]
 
-        if not rows:
-            return "No data available", 200
-
-        headers = list(rows[0].keys())
-        csv_lines = [",".join(headers)]
-
-        for row in rows:
-            line = []
-            for col in headers:
-                val = str(row[col]).replace('"', '""') if row[col] is not None else ""
-                line.append(f'"{val}"')
-            csv_lines.append(",".join(line))
-
-        csv_content = "\n".join(csv_lines)
-        return (csv_content, 200, {
-            'Content-Type': 'text/csv',
-            'Content-Disposition': f'attachment; filename={export_type}_report_{datetime.date.today()}.csv'
-        })
-    except Exception as e:
-        return jsonify({"error": f"Export error: {e}"}), 500
-
-
-# --------------------------------------------------------------------------
-# CORPORATE ERP & HRMS SYSTEMS REST API
-# --------------------------------------------------------------------------
-
-@app.route('/api/erp/employees', methods=['GET', 'POST'])
-def erp_manage_employees():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    if request.method == 'GET':
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            # Fetch tasks statistics to calculate dynamic performance score
-            cursor.execute("SELECT assigned_to, COUNT(*) as total, SUM(CASE WHEN status='Done' THEN 1 ELSE 0 END) as done FROM erp_tasks GROUP BY assigned_to")
-            task_stats = {row['assigned_to']: (row['total'], row['done']) for row in cursor.fetchall()}
-            
-            cursor.execute("SELECT * FROM employees ORDER BY emp_id ASC")
-            rows = cursor.fetchall()
-            conn.close()
-            
-            results = []
-            for r in rows:
-                emp = dict(r)
-                name = emp.get('name')
-                if name in task_stats:
-                    total, done = task_stats[name]
-                    emp['performance_score'] = round((done / total) * 100, 1) if total > 0 else 100.0
-                else:
-                    emp['performance_score'] = 100.0
-                results.append(emp)
-                
-            return jsonify(results)
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-    elif request.method == 'POST':
-        data = request.json
-        if not data or not data.get('name') or not data.get('email'):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            
-            emp_id = generate_unique_id('KC-EMP')
-            raw_password = data.get('password', 'Kapate@123').strip() or 'Kapate@123'
-            password_hash = generate_password_hash(raw_password)
-
-            cursor.execute('''
-                INSERT INTO employees (emp_id, name, email, password, role, department, employment_type, join_date, basic_pay, allowances, deductions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (emp_id, data.get('name'), data.get('email'), password_hash, data.get('role', 'Developer'), 
-                  data.get('department', 'Engineering'), data.get('employment_type', 'Full-time'),
-                  data.get('join_date', str(datetime.date.today())), float(data.get('basic_pay', 30000)),
-                  float(data.get('allowances', 5000)), float(data.get('deductions', 1000))))
-            
-            conn.commit()
-            conn.close()
-
-            audit_log_event("Admin", "EMPLOYEE_CREATED", "employees", emp_id, "", f"Onboarded {data.get('name')} as {emp_id}")
-
-            return jsonify({"success": True, "emp_id": emp_id, "message": "Employee registered successfully."}), 201
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/auth/login', methods=['POST'])
-def erp_direct_login():
-    data = request.json
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({"success": False, "error": "Email and password are required."}), 400
-
-    email = data.get('email').strip()
-    password = data.get('password').strip()
-    config = load_config()
-    admin_pass = config.get("ADMIN_PASSWORD", "Admin@KapateConsultancy8421174957")
-
-    # Check Admin Credentials
-    if email == "office.kapateconsultancy@gmail.com" and password == admin_pass:
-        audit_log_event("Admin", "USER_LOGIN", "users", "KC-EMP-101", "", "CEO Admin Logged In")
-        return jsonify({
-            "success": True,
-            "token": "Bearer kapate-admin-secure-token-98765",
-            "emp_id": "KC-EMP-101",
-            "name": "Shon Kapate",
-            "role": "Admin"
-        })
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT emp_id, name, role, password FROM employees WHERE email = ?", (email,))
-        row = cursor.fetchone()
-        conn.close()
-
-        if not row:
-            return jsonify({"success": False, "error": "No employee account registered with this email."}), 404
-
-        emp_id, name, role, stored_hash = row[0], row[1], row[2], row[3]
-        
-        # Verify using secure password hash check (or legacy plaintext fallback for existing test DBs)
-        is_valid = check_password_hash(stored_hash, password) or (password == stored_hash) or (password == admin_pass)
-
-        if is_valid:
-            audit_log_event(name, "USER_LOGIN", "employees", emp_id, "", "User Authenticated")
-            return jsonify({
-                "success": True,
-                "token": "Bearer kapate-admin-secure-token-98765",
-                "emp_id": emp_id,
-                "name": name,
-                "role": role
-            })
-        else:
-            audit_log_event(email, "LOGIN_FAILED", "employees", "", "Failed Login Attempt", "")
-            return jsonify({"success": False, "error": "Invalid password credentials."}), 401
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route('/api/erp/employees/<int:emp_db_id>', methods=['DELETE'])
-def erp_delete_employee(emp_db_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM employees WHERE id = ?", (emp_db_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Employee removed."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/attendance', methods=['GET', 'POST'])
-def erp_attendance():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM attendance ORDER BY date DESC, check_in DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-        
-    elif request.method == 'POST':
-        data = request.json
-        emp_id = data.get('emp_id')
-        date_str = str(datetime.date.today())
-        time_str = datetime.datetime.now().strftime("%H:%M:%S")
-
-        cursor = conn.cursor()
-        # Check if already checked in today
-        cursor.execute("SELECT id, check_out FROM attendance WHERE emp_id = ? AND date = ?", (emp_id, date_str))
-        existing = cursor.fetchone()
-
-        if not existing:
-            # Check-In
-            cursor.execute('''
-                INSERT INTO attendance (emp_id, date, check_in, status)
-                VALUES (?, ?, ?, 'Present')
-            ''', (emp_id, date_str, time_str))
-            msg = "Checked In successfully."
-        else:
-            # Check-Out
-            att_id = existing[0]
-            cursor.execute('''
-                UPDATE attendance SET check_out = ?, total_hours = 8.5
-                WHERE id = ?
-            ''', (time_str, att_id))
-            msg = "Checked Out successfully."
-
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": msg})
-
-
-@app.route('/api/erp/leaves', methods=['GET', 'POST'])
-def erp_leaves():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM leaves ORDER BY start_date DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-
-    elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO leaves (emp_id, leave_type, start_date, end_date, reason, status)
-                VALUES (?, ?, ?, ?, ?, 'Pending')
-            ''', (data.get('emp_id'), data.get('leave_type'), data.get('start_date'), data.get('end_date'), data.get('reason', '')))
-            
-            # Real-time System Notification
-            cursor.execute('''
-                INSERT INTO notifications (title, message, category)
-                VALUES (?, ?, 'warning')
-            ''', ("Leave Request", f"{data.get('emp_id')} applied for {data.get('leave_type')} leave."))
-            
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Leave request submitted."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/leaves/<int:leave_id>', methods=['PUT'])
-def erp_update_leave(leave_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    data = request.json
-    status = data.get('status') # Approved / Rejected
-    
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE leaves SET status = ? WHERE id = ?", (status, leave_id))
-        
-        # Log activity
-        cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                       ("HR Manager", f"Leave {status}", f"Leave request #{leave_id} updated to {status}", "calendar"))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": f"Leave request {status}."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/payroll', methods=['GET', 'POST'])
-def erp_payroll():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT p.*, e.name, e.role, e.department, e.employment_type 
-            FROM payroll p
-            JOIN employees e ON p.emp_id = e.emp_id
-            ORDER BY p.month DESC
-        ''')
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-
-    elif request.method == 'POST':
-        data = request.json
-        month = data.get('month') # e.g. "2026-08"
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT emp_id, basic_pay, allowances, deductions FROM employees")
-            employees = cursor.fetchall()
-
-            for emp in employees:
-                emp_id, basic, allow, ded = emp
-                net = basic + allow - ded
-                
-                # Check duplicate
-                cursor.execute("SELECT 1 FROM payroll WHERE emp_id = ? AND month = ?", (emp_id, month))
-                if not cursor.fetchone():
-                    cursor.execute('''
-                        INSERT INTO payroll (emp_id, month, basic, allowances, deductions, net_salary, status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'Paid')
-                    ''', (emp_id, month, basic, allow, ded, net))
-                    
-                    # Add to expense ledger
-                    cursor.execute('''
-                        INSERT INTO expenses (title, category, amount, date, status)
-                        VALUES (?, 'Payroll', ?, ?, 'Approved')
-                    ''', (f"Payroll - {emp_id} ({month})", net, f"{month}-28"))
-
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": f"Payroll generated for {month}."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/payroll/slip/<int:payroll_id>', methods=['GET'])
-def erp_payroll_slip(payroll_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT p.*, e.name, e.role, e.department, e.employment_type, e.join_date, e.email
-        FROM payroll p
-        JOIN employees e ON p.emp_id = e.emp_id
-        WHERE p.id = ?
-    ''', (payroll_id,))
-    row = cursor.fetchone()
     conn.close()
 
-    if not row:
-        return jsonify({"error": "Payroll record not found"}), 404
+    items = []
+    if overdue_tasks > 0:
+        items.append({"level": "danger", "title": f"{overdue_tasks} overdue task(s) requiring intervention", "tab": "tab-tasks", "badge": "Overdue"})
+    if pending_approvals > 0:
+        items.append({"level": "warning", "title": f"{pending_approvals} task deliverable(s) pending executive approval", "tab": "tab-tasks", "badge": "Review"})
+    if pending_leaves > 0:
+        items.append({"level": "warning", "title": f"{pending_leaves} staff leave request(s) awaiting moderation", "tab": "tab-leave", "badge": "Leave"})
+    if overdue_invoices > 0:
+        items.append({"level": "danger", "title": f"{overdue_invoices} client invoice(s) past payment due date", "tab": "tab-invoices", "badge": "Finance"})
+    if projects_at_risk > 0:
+        items.append({"level": "info", "title": f"{projects_at_risk} active project(s) approaching deadline within 14 days", "tab": "tab-projects", "badge": "SLA"})
 
-    return jsonify(dict(row))
+    return jsonify({"success": True, "items": items, "counts": {
+        "overdue_tasks": overdue_tasks,
+        "pending_approvals": pending_approvals,
+        "pending_leaves": pending_leaves,
+        "overdue_invoices": overdue_invoices,
+        "projects_at_risk": projects_at_risk
+    }})
 
+@app.route('/api/workspace/dashboard/metrics', methods=['GET'])
+def workspace_dashboard_metrics():
+    user, err = require_auth()
+    if err: return err
 
-@app.route('/api/erp/finance', methods=['GET', 'POST'])
-def erp_finance():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    conn = get_db()
+    cursor = conn.cursor()
+    role = user['role']
+    metrics = {}
 
-    conn = sqlite3.connect(DB_FILE)
+    if role == 'CEO':
+        cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'Active'")
+        metrics['total_employees'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'Manager' AND status = 'Active'")
+        metrics['total_managers'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'Intern' AND status = 'Active'")
+        metrics['total_interns'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM projects WHERE status = 'Active'")
+        metrics['active_projects'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM projects WHERE status = 'Completed'")
+        metrics['completed_projects'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE status NOT IN ('Completed', 'Approved')")
+        metrics['active_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Completed'")
+        metrics['completed_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE deadline < date('now') AND status NOT IN ('Completed', 'Approved')")
+        metrics['overdue_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Submitted'")
+        metrics['pending_approvals'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM clients WHERE status = 'Active'")
+        metrics['active_clients'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status = 'Paid'")
+        metrics['monthly_revenue'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status IN ('Sent', 'Draft', 'Partially Paid')")
+        metrics['pending_payments'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending'")
+        metrics['pending_leaves'] = cursor.fetchone()[0]
+
+        metrics['company_health'] = {
+            "projects": 88,
+            "tasks": 82,
+            "deadlines": 91,
+            "client_status": 96
+        }
+
+    elif role == 'Manager':
+        cursor.execute("SELECT COUNT(*) FROM projects WHERE manager_id = ? AND status = 'Active'", (user['id'],))
+        metrics['active_projects'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_by_id = ? AND status NOT IN ('Completed', 'Approved')", (user['id'],))
+        metrics['tasks_assigned'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_by_id = ? AND status = 'Submitted'", (user['id'],))
+        metrics['tasks_pending_review'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_by_id = ? AND deadline < date('now') AND status NOT IN ('Completed', 'Approved')", (user['id'],))
+        metrics['overdue_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending'")
+        metrics['pending_leaves'] = cursor.fetchone()[0]
+
+    elif role == 'Employee':
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ? AND status IN ('Assigned', 'Accepted', 'In Progress')", (user['id'],))
+        metrics['today_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ? AND priority = 'High' AND status NOT IN ('Completed', 'Approved')", (user['id'],))
+        metrics['high_priority_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ? AND status = 'Submitted'", (user['id'],))
+        metrics['tasks_under_review'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ? AND status = 'Completed'", (user['id'],))
+        metrics['completed_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM internal_messages WHERE receiver_id = ? AND is_read = 0 AND folder = 'inbox'", (user['id'],))
+        metrics['unread_messages'] = cursor.fetchone()[0]
+
+    elif role == 'Intern':
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ?", (user['id'],))
+        metrics['assigned_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to_id = ? AND status = 'Completed'", (user['id'],))
+        metrics['completed_tasks'] = cursor.fetchone()[0]
+
+        cursor.execute("SELECT progress_percent, certificate_status FROM internship_details WHERE mentor_id = ? OR intern_name LIKE ?", (user['id'], f"%{user['name']}%"))
+        row = cursor.fetchone()
+        metrics['progress_percent'] = row['progress_percent'] if row else 80
+        metrics['certificate_status'] = row['certificate_status'] if row else 'In Progress'
+
+    conn.close()
+    return jsonify({"success": True, "metrics": metrics})
+
+# --- 3. Full Employee Management & Comprehensive Profile ---
+@app.route('/api/workspace/employees', methods=['GET', 'POST'])
+def workspace_employees():
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
     if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM expenses ORDER BY date DESC")
-        expenses = cursor.fetchall()
-        
-        cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses")
-        total_exp = cursor.fetchone()[0]
+        dept_filter = request.args.get('department')
+        role_filter = request.args.get('role')
+        status_filter = request.args.get('status')
+        manager_filter = request.args.get('manager')
+        search = request.args.get('q', '').strip().lower()
 
-        # Fetch revenue from CRM project budgets
-        cursor.execute("SELECT COALESCE(SUM(budget), 0) FROM projects")
-        total_rev = cursor.fetchone()[0]
+        query = "SELECT * FROM users WHERE 1=1"
+        params = []
+
+        if dept_filter and dept_filter != 'All':
+            query += " AND department = ?"
+            params.append(dept_filter)
+        if role_filter and role_filter != 'All':
+            query += " AND role = ?"
+            params.append(role_filter)
+        if status_filter and status_filter != 'All':
+            query += " AND status = ?"
+            params.append(status_filter)
+        if manager_filter and manager_filter != 'All':
+            query += " AND manager_name LIKE ?"
+            params.append(f"%{manager_filter}%")
+        if search:
+            query += " AND (LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(emp_code) LIKE ? OR LOWER(designation) LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
+
+        query += " ORDER BY id ASC"
+        cursor.execute(query, params)
+        employees = [dict(r) for r in cursor.fetchall()]
+
+        # Non-CEO / Non-HR should not see basic_pay compensation numbers
+        if user['role'] not in ['CEO', 'Manager']:
+            for emp in employees:
+                emp.pop('basic_pay', None)
 
         conn.close()
-        return jsonify({
-            "expenses": [dict(e) for e in expenses],
-            "total_expenses": total_exp,
-            "total_revenue": total_rev,
-            "net_profit": total_rev - total_exp
-        })
+        return jsonify({"success": True, "employees": employees})
 
     elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO expenses (title, category, amount, date, status)
-                VALUES (?, ?, ?, ?, 'Approved')
-            ''', (data.get('title'), data.get('category'), float(data.get('amount')), data.get('date', str(datetime.date.today()))))
-            conn.commit()
+        if user['role'] != 'CEO':
             conn.close()
-            return jsonify({"success": True, "message": "Expense item logged."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Only CEO/Admin can register new employees."}), 403
 
+        data = request.get_json(silent=True) or {}
+        name = data.get('name', '').strip()
+        username = data.get('username', '').strip().lower()
+        email = data.get('email', '').strip().lower() or f"{username}@internal.kapate"
+        password = data.get('password', '').strip() or 'Kapate@2026'
+        emp_code = data.get('emp_code', '').strip().upper() or f"EMP-{random.randint(100, 999)}"
+        department = data.get('department', 'Software Development')
+        designation = data.get('designation', 'Software Engineer')
+        role = data.get('role', 'Employee')
+        manager_name = data.get('manager_name', 'Rohit Verma')
+        joining_date = data.get('joining_date', datetime.date.today().strftime('%Y-%m-%d'))
+        employment_type = data.get('employment_type', 'Full-Time')
+        basic_pay = float(data.get('basic_pay', 75000))
+        phone = data.get('phone', '')
 
-@app.route('/api/erp/recruitments', methods=['GET', 'POST', 'PUT'])
-def erp_recruitments():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+        if not name or not username:
+            conn.close()
+            return jsonify({"success": False, "error": "Full Name and Username are required."}), 400
 
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM recruitments ORDER BY score DESC")
-        rows = cursor.fetchall()
+        pwd_hash = generate_password_hash(password)
+        try:
+            cursor.execute('''
+                INSERT INTO users (emp_code, username, email, password_hash, name, role, department, designation, manager_name, status, phone, joining_date, employment_type, basic_pay)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
+            ''', (emp_code, username, email, pwd_hash, name, role, department, designation, manager_name, phone, joining_date, employment_type, basic_pay))
+            conn.commit()
+
+            audit_log(user['name'], "Created Employee Account", "users", emp_code, new_val=f"{name} ({role})", reason="Staff Provisioning")
+            conn.close()
+            return jsonify({"success": True, "message": f"Employee {name} ({emp_code}) provisioned successfully."})
+        except sqlite3.IntegrityError as e:
+            conn.close()
+            return jsonify({"success": False, "error": f"Employee ID or username already exists."}), 400
+
+@app.route('/api/workspace/employees/<int:emp_id>/full-profile', methods=['GET'])
+def workspace_employee_full_profile(emp_id):
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE id = ?", (emp_id,))
+    emp_row = cursor.fetchone()
+    if not emp_row:
         conn.close()
-        return jsonify([dict(r) for r in rows])
+        return jsonify({"success": False, "error": "Employee not found."}), 404
 
-    elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO recruitments (name, email, role, status, score)
-                VALUES (?, ?, ?, 'Applied', ?)
-            ''', (data.get('name'), data.get('email'), data.get('role'), int(data.get('score', 70))))
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Recruitment profile logged."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+    emp = dict(emp_row)
 
+    # Privacy check for compensation: Only CEO and self can see salary
+    if user['role'] != 'CEO' and user['id'] != emp['id']:
+        emp.pop('basic_pay', None)
 
-@app.route('/api/erp/tasks', methods=['GET', 'POST', 'PUT'])
-def erp_tasks():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    # 1. Projects
+    cursor.execute("SELECT * FROM projects WHERE team_members LIKE ? OR manager_id = ?", (f"%{emp['name']}%", emp['id']))
+    projects = [dict(r) for r in cursor.fetchall()]
 
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM erp_tasks ORDER BY deadline ASC")
-        rows = cursor.fetchall()
+    # 2. Tasks & Stats
+    cursor.execute("SELECT * FROM tasks WHERE assigned_to_id = ? ORDER BY id DESC", (emp['id'],))
+    tasks = [dict(r) for r in cursor.fetchall()]
+
+    completed_tasks = len([t for t in tasks if t['status'] in ['Completed', 'Approved']])
+    pending_tasks = len([t for t in tasks if t['status'] in ['Assigned', 'In Progress', 'Accepted']])
+    submitted_tasks = len([t for t in tasks if t['status'] == 'Submitted'])
+    overdue_tasks = len([t for t in tasks if t['deadline'] < datetime.date.today().strftime('%Y-%m-%d') and t['status'] not in ['Completed', 'Approved']])
+
+    # 3. Attendance Stats & Logs
+    cursor.execute("SELECT * FROM attendance WHERE emp_id = ? OR emp_name LIKE ? ORDER BY date DESC LIMIT 30", (emp['emp_code'], f"%{emp['name']}%"))
+    attendance_logs = [dict(r) for r in cursor.fetchall()]
+    present_days = len([a for a in attendance_logs if a['status'] == 'Present'])
+    late_days = len([a for a in attendance_logs if a['status'] == 'Late'])
+
+    # 4. Leave History & Balance
+    cursor.execute("SELECT * FROM leave_requests WHERE emp_id = ? OR emp_name LIKE ? ORDER BY id DESC", (emp['emp_code'], f"%{emp['name']}%"))
+    leave_requests = [dict(r) for r in cursor.fetchall()]
+    leave_balance = {
+        "available": 18,
+        "used": len([l for l in leave_requests if l['status'] == 'Approved']),
+        "pending": len([l for l in leave_requests if l['status'] == 'Pending']),
+        "rejected": len([l for l in leave_requests if l['status'] == 'Rejected'])
+    }
+
+    # 5. Documents
+    cursor.execute("SELECT * FROM employee_documents WHERE emp_id = ? ORDER BY id ASC", (emp['id'],))
+    documents = [dict(r) for r in cursor.fetchall()]
+
+    # 6. Confidential Notes (CEO Only)
+    notes = []
+    if user['role'] == 'CEO':
+        cursor.execute("SELECT * FROM employee_notes WHERE emp_id = ? ORDER BY id DESC", (emp['id'],))
+        notes = [dict(r) for r in cursor.fetchall()]
+
+    # 7. Activity Timeline (Audit logs related to employee)
+    cursor.execute("SELECT * FROM audit_logs WHERE user_name LIKE ? OR entity_id = ? ORDER BY id DESC LIMIT 20", (f"%{emp['name']}%", emp['emp_code']))
+    activity = [dict(r) for r in cursor.fetchall()]
+
+    # 8. Performance Review
+    cursor.execute("SELECT * FROM performance_reviews WHERE emp_id = ? OR emp_name LIKE ? ORDER BY id DESC LIMIT 1", (emp['emp_code'], f"%{emp['name']}%"))
+    review_row = cursor.fetchone()
+    review = dict(review_row) if review_row else {
+        "rating_score": emp.get('performance_score', 4.7),
+        "on_time_rate": 96.2,
+        "tasks_completed": completed_tasks,
+        "feedback": "Consistent high quality technical delivery and strong team collaboration."
+    }
+
+    conn.close()
+
+    # Log CEO profile view
+    if user['role'] == 'CEO' and user['id'] != emp['id']:
+        audit_log(user['name'], "Viewed Employee Profile", "users", emp['emp_code'], reason="Executive Inspection")
+
+    return jsonify({
+        "success": True,
+        "employee": emp,
+        "stats": {
+            "projects_count": len(projects),
+            "tasks_total": len(tasks),
+            "tasks_completed": completed_tasks,
+            "tasks_pending": pending_tasks,
+            "tasks_submitted": submitted_tasks,
+            "tasks_overdue": overdue_tasks,
+            "attendance_rate": 96.5,
+            "performance_rating": emp.get('performance_score', 4.7)
+        },
+        "projects": projects,
+        "tasks": tasks,
+        "attendance": {
+            "logs": attendance_logs,
+            "present_count": present_days,
+            "late_count": late_days,
+            "attendance_rate": 96.5
+        },
+        "leave": {
+            "balance": leave_balance,
+            "history": leave_requests
+        },
+        "performance": {
+            "review": review,
+            "trends": [
+                {"month": "Jan", "score": 4.5},
+                {"month": "Feb", "score": 4.6},
+                {"month": "Mar", "score": 4.6},
+                {"month": "Apr", "score": 4.7},
+                {"month": "May", "score": 4.8},
+                {"month": "Jun", "score": 4.7}
+            ]
+        },
+        "documents": documents,
+        "notes": notes,
+        "activity": activity
+    })
+
+# --- 4. Employee Personal & Employment Updates ---
+@app.route('/api/workspace/employees/<int:emp_id>/personal', methods=['PUT'])
+def workspace_update_employee_personal(emp_id):
+    user, err = require_auth(['CEO', 'Manager'])
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        UPDATE users 
+        SET dob = COALESCE(?, dob),
+            phone = COALESCE(?, phone),
+            address = COALESCE(?, address),
+            emergency_contact = COALESCE(?, emergency_contact)
+        WHERE id = ?
+    ''', (data.get('dob'), data.get('phone'), data.get('address'), data.get('emergency_contact'), emp_id))
+    conn.commit()
+
+    audit_log(user['name'], "Updated Personal Information", "users", emp_id, reason="HR Profile Update")
+    conn.close()
+    return jsonify({"success": True, "message": "Personal information updated successfully."})
+
+@app.route('/api/workspace/employees/<int:emp_id>/employment', methods=['PUT'])
+def workspace_update_employee_employment(emp_id):
+    user, err = require_auth(['CEO'])
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        UPDATE users 
+        SET designation = COALESCE(?, designation),
+            department = COALESCE(?, department),
+            role = COALESCE(?, role),
+            manager_name = COALESCE(?, manager_name),
+            employment_type = COALESCE(?, employment_type),
+            basic_pay = COALESCE(?, basic_pay)
+        WHERE id = ?
+    ''', (data.get('designation'), data.get('department'), data.get('role'), data.get('manager_name'), data.get('employment_type'), data.get('basic_pay'), emp_id))
+    conn.commit()
+
+    audit_log(user['name'], "Updated Employment Details", "users", emp_id, new_val=f"Dept: {data.get('department')}, Role: {data.get('role')}", reason="Executive Compensation / Assignment")
+    conn.close()
+    return jsonify({"success": True, "message": "Employment details & compensation updated."})
+
+@app.route('/api/workspace/employees/<int:emp_id>/status', methods=['PUT'])
+def workspace_update_employee_status(emp_id):
+    user, err = require_auth(['CEO'])
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', 'Active') # Active, Inactive, Suspended
+    reason = data.get('reason', 'Administrative Action')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, emp_id))
+    conn.commit()
+
+    audit_log(user['name'], f"Changed Employee Status to {new_status}", "users", emp_id, new_val=new_status, reason=reason)
+    conn.close()
+    return jsonify({"success": True, "message": f"Employee status set to {new_status}."})
+
+@app.route('/api/workspace/employees/<int:emp_id>/notes', methods=['POST'])
+def workspace_add_employee_note(emp_id):
+    user, err = require_auth(['CEO'])
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    note_text = data.get('note_text', '').strip()
+    if not note_text:
+        return jsonify({"success": False, "error": "Note text is required."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO employee_notes (emp_id, author_id, author_name, author_role, note_text)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (emp_id, user['id'], user['name'], user['role'], note_text))
+    conn.commit()
+
+    audit_log(user['name'], "Added Confidential Employee Note", "employee_notes", emp_id, reason="Executive Review")
+    conn.close()
+    return jsonify({"success": True, "message": "Confidential note saved."})
+
+# --- 5. CEO Task Master Override ---
+@app.route('/api/workspace/tasks/<task_id>/ceo-override', methods=['POST'])
+def workspace_ceo_task_override(task_id):
+    user, err = require_auth(['CEO'])
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    reassigned_to_id = data.get('assigned_to_id')
+    reassigned_to_name = data.get('assigned_to_name')
+    priority = data.get('priority')
+    deadline = data.get('deadline')
+    status = data.get('status')
+    override_reason = data.get('reason', 'CEO Executive Reallocation')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,))
+    task = cursor.fetchone()
+    if not task:
         conn.close()
-        return jsonify([dict(r) for r in rows])
+        return jsonify({"success": False, "error": "Task not found."}), 404
+
+    old_summary = f"Assignee: {task['assigned_to_name']}, Priority: {task['priority']}, Status: {task['status']}, Deadline: {task['deadline']}"
+
+    cursor.execute('''
+        UPDATE tasks
+        SET assigned_to_id = COALESCE(?, assigned_to_id),
+            assigned_to_name = COALESCE(?, assigned_to_name),
+            priority = COALESCE(?, priority),
+            deadline = COALESCE(?, deadline),
+            status = COALESCE(?, status),
+            updated_at = datetime('now', 'localtime')
+        WHERE task_id = ?
+    ''', (reassigned_to_id, reassigned_to_name, priority, deadline, status, task_id))
+    conn.commit()
+
+    new_summary = f"Assignee: {reassigned_to_name or task['assigned_to_name']}, Priority: {priority or task['priority']}, Status: {status or task['status']}, Deadline: {deadline or task['deadline']}"
+
+    audit_log(user['name'], f"CEO Overrode Task {task_id}", "tasks", task_id, old_val=old_summary, new_val=new_summary, reason=override_reason)
+    create_notification(reassigned_to_id or task['assigned_to_id'], "Task Updated by CEO", f"CEO override on {task['title']}: {override_reason}", "tab-tasks", "task")
+
+    conn.close()
+    return jsonify({"success": True, "message": f"Task {task_id} successfully updated with executive override."})
+
+# --- 6. Departments & Roles Matrix ---
+@app.route('/api/workspace/departments', methods=['GET', 'POST'])
+def workspace_departments():
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute('''
+            SELECT d.*, 
+                   (SELECT COUNT(*) FROM users u WHERE u.department = d.name) as employee_count,
+                   (SELECT COUNT(*) FROM projects p WHERE p.client_name IS NOT NULL) as active_projects
+            FROM departments d
+            ORDER BY d.id ASC
+        ''')
+        depts = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "departments": depts})
 
     elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
-            attachment_pdf = data.get('attachment_pdf', '').strip()
-            deadline_val = data.get('deadline', '').strip() or str(datetime.date.today() + datetime.timedelta(days=7))
-            cursor.execute('''
-                INSERT INTO erp_tasks (title, description, assigned_to, status, priority, deadline, checklist, attachment_pdf)
-                VALUES (?, ?, ?, 'To Do', ?, ?, ?, ?)
-            ''', (data.get('title'), data.get('description', ''), data.get('assigned_to'), data.get('priority', 'Medium'), deadline_val, checklist_str, attachment_pdf))
-            
-            # Notification trigger
-            cursor.execute('''
-                INSERT INTO notifications (title, message, category)
-                VALUES (?, ?, 'info')
-            ''', ("Work Assigned", f"New task assigned to {data.get('assigned_to')}: {data.get('title')}"))
-            
-            conn.commit()
+        if user['role'] != 'CEO':
             conn.close()
-            return jsonify({"success": True, "message": "Work assigned successfully."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Only CEO can create departments."}), 403
+
+        data = request.get_json(silent=True) or {}
+        name = data.get('name', '').strip()
+        head_name = data.get('head_name', '').strip()
+        description = data.get('description', '')
+        budget = float(data.get('budget', 1000000))
+
+        if not name or not head_name:
+            conn.close()
+            return jsonify({"success": False, "error": "Department Name and Head Name are required."}), 400
+
+        cursor.execute('''
+            INSERT INTO departments (name, head_name, description, budget)
+            VALUES (?, ?, ?, ?)
+        ''', (name, head_name, description, budget))
+        conn.commit()
+
+        audit_log(user['name'], "Created Department", "departments", name, reason="Org Restructuring")
+        conn.close()
+        return jsonify({"success": True, "message": f"Department '{name}' created successfully."})
+
+@app.route('/api/workspace/roles-permissions', methods=['GET', 'PUT'])
+def workspace_roles_permissions():
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM roles_permissions ORDER BY id ASC")
+        perms = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "permissions": perms})
 
     elif request.method == 'PUT':
-        data = request.json
-        task_id = data.get('id')
-        new_status = data.get('status')
-        checklist = data.get('checklist')
-        try:
-            cursor = conn.cursor()
-            if new_status and checklist is not None:
-                cursor.execute("UPDATE erp_tasks SET status = ?, checklist = ? WHERE id = ?", (new_status, checklist, task_id))
-            elif new_status:
-                cursor.execute("UPDATE erp_tasks SET status = ? WHERE id = ?", (new_status, task_id))
-            elif checklist is not None:
-                cursor.execute("UPDATE erp_tasks SET checklist = ? WHERE id = ?", (checklist, task_id))
-            conn.commit()
+        if user['role'] != 'CEO':
             conn.close()
-            return jsonify({"success": True, "message": "Task updated successfully."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Only CEO can modify permissions matrix."}), 403
 
+        data = request.get_json(silent=True) or {}
+        perm_id = data.get('id')
+        manager_perm = data.get('manager_perm')
+        employee_perm = data.get('employee_perm')
+        intern_perm = data.get('intern_perm')
 
-@app.route('/api/erp/tasks/<int:task_id>', methods=['DELETE'])
-def erp_delete_task(task_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM erp_tasks WHERE id = ?", (task_id,))
+        cursor.execute('''
+            UPDATE roles_permissions
+            SET manager_perm = COALESCE(?, manager_perm),
+                employee_perm = COALESCE(?, employee_perm),
+                intern_perm = COALESCE(?, intern_perm)
+            WHERE id = ?
+        ''', (manager_perm, employee_perm, intern_perm, perm_id))
         conn.commit()
+
+        audit_log(user['name'], "Updated Permissions Matrix", "roles_permissions", perm_id, reason="Security Policy Update")
         conn.close()
-        return jsonify({"success": True, "message": "Task deleted successfully."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": True, "message": "Permission updated."})
 
+# --- 7. Data Export (CSV/Text) ---
+@app.route('/api/workspace/export/<export_type>', methods=['GET'])
+def workspace_export(export_type):
+    user, err = require_auth(['CEO', 'Manager'])
+    if err: return err
 
-@app.route('/api/admin/reset-database', methods=['POST'])
-def admin_reset_database():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    conn = get_db()
+    cursor = conn.cursor()
+    si = StringIO()
+    writer = csv.writer(si)
 
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        tables = ['employees', 'erp_tasks', 'clients', 'projects', 'recruitments', 'expenses', 'attendance', 'leaves', 'payroll', 'activity_logs', 'notifications', 'invoices', 'timesheets']
-        for table in tables:
-            try:
-                cursor.execute(f"DELETE FROM {table}")
-            except sqlite3.OperationalError:
-                pass
-        
-        cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                       ("Admin", "Database Reset", "Database cleared and set to fresh state", "refresh-cw"))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Database reset to fresh state successfully."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# --------------------------------------------------------------------------
-# CONSULTANCY OPERATIONS: INVOICES, TIMESHEETS & INQUIRY CONVERSION
-# --------------------------------------------------------------------------
-
-@app.route('/api/erp/invoices', methods=['GET', 'POST', 'PUT'])
-def erp_invoices():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM invoices ORDER BY id DESC")
+    if export_type == 'employees':
+        cursor.execute("SELECT emp_code, name, email, role, department, designation, manager_name, status, joining_date, phone FROM users")
         rows = cursor.fetchall()
+        writer.writerow(['Employee ID', 'Name', 'Email', 'Role', 'Department', 'Designation', 'Manager', 'Status', 'Joining Date', 'Phone'])
+        for r in rows:
+            writer.writerow(list(r))
+        filename = "Kapate_Employees_Export.csv"
+
+    elif export_type == 'tasks':
+        cursor.execute("SELECT task_id, title, project_name, assigned_to_name, priority, status, deadline, estimated_hours FROM tasks")
+        rows = cursor.fetchall()
+        writer.writerow(['Task ID', 'Title', 'Project', 'Assignee', 'Priority', 'Status', 'Deadline', 'Estimated Hours'])
+        for r in rows:
+            writer.writerow(list(r))
+        filename = "Kapate_Tasks_Export.csv"
+
+    elif export_type == 'attendance':
+        cursor.execute("SELECT emp_id, emp_name, date, clock_in, clock_out, total_hours, status FROM attendance")
+        rows = cursor.fetchall()
+        writer.writerow(['Employee ID', 'Name', 'Date', 'Clock In', 'Clock Out', 'Total Hours', 'Status'])
+        for r in rows:
+            writer.writerow(list(r))
+        filename = "Kapate_Attendance_Export.csv"
+
+    elif export_type == 'invoices':
+        cursor.execute("SELECT invoice_no, client_name, project_name, total, due_date, status FROM invoices")
+        rows = cursor.fetchall()
+        writer.writerow(['Invoice No', 'Client', 'Project', 'Total (INR)', 'Due Date', 'Status'])
+        for r in rows:
+            writer.writerow(list(r))
+        filename = "Kapate_Invoices_Export.csv"
+
+    else:
         conn.close()
-        return jsonify([dict(r) for r in rows])
+        return jsonify({"success": False, "error": "Invalid export type."}), 400
+
+    conn.close()
+    audit_log(user['name'], f"Exported {export_type.title()} Data", "exports", export_type, reason="Executive Data Export")
+
+    output = si.getvalue()
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename={filename}"}
+    )
+
+# --- 8. Projects & Tasks Core Endpoints ---
+@app.route('/api/workspace/projects', methods=['GET', 'POST'])
+def workspace_projects():
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM projects ORDER BY id DESC")
+        projects = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "projects": projects})
 
     elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM invoices")
-            count = cursor.fetchone()[0]
-            invoice_no = f"INV-2026-{(1001 + count)}"
-
-            amount = float(data.get('amount', 0.0))
-            tax_gst = float(data.get('tax_gst', amount * 0.18))
-            total_amount = amount + tax_gst
-            line_items = json.dumps(data.get('line_items', [])) if isinstance(data.get('line_items'), list) else data.get('line_items', '[]')
-
-            cursor.execute('''
-                INSERT INTO invoices (invoice_no, client_name, client_email, service, amount, tax_gst, total_amount, issue_date, due_date, status, line_items)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (invoice_no, data.get('client_name'), data.get('client_email', ''), data.get('service', 'Consulting'),
-                  amount, tax_gst, total_amount, data.get('issue_date', str(datetime.date.today())),
-                  data.get('due_date', str(datetime.date.today() + datetime.timedelta(days=15))),
-                  data.get('status', 'Unpaid'), line_items))
-
-            cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                           ("Admin", f"Invoice Generated: {invoice_no}", f"Billing {data.get('client_name')} for ₹{total_amount:,.2f}", "file-text"))
-            conn.commit()
+        if user['role'] not in ['CEO', 'Manager']:
             conn.close()
-            return jsonify({"success": True, "invoice_no": invoice_no, "message": "Invoice created successfully."}), 201
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Permission denied."}), 403
 
-    elif request.method == 'PUT':
-        data = request.json
-        invoice_id = data.get('id')
-        status = data.get('status')
-        try:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE invoices SET status = ? WHERE id = ?", (status, invoice_id))
-            conn.commit()
+        data = request.get_json(silent=True) or {}
+        name = data.get('name', '').strip()
+        client_name = data.get('client_name', '').strip()
+        description = data.get('description', '').strip()
+        deadline = data.get('deadline', '')
+        priority = data.get('priority', 'Medium')
+        budget = float(data.get('budget', 0))
+
+        if not name:
             conn.close()
-            return jsonify({"success": True, "message": "Invoice status updated."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Project name is required."}), 400
 
-
-@app.route('/api/erp/invoices/<int:invoice_id>', methods=['GET', 'DELETE'])
-def erp_invoice_detail(invoice_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            return jsonify({"error": "Invoice not found"}), 404
-        return jsonify(dict(row))
-
-    elif request.method == 'DELETE':
-        try:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Invoice deleted."})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/timesheets', methods=['GET', 'POST'])
-def erp_timesheets():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM timesheets ORDER BY date DESC, id DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-
-    elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO timesheets (emp_id, emp_name, project_title, client_name, hours_logged, date, description, billable_rate, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Approved')
-            ''', (data.get('emp_id', 'KC-EMP-101'), data.get('emp_name', 'Consultant'), data.get('project_title'),
-                  data.get('client_name', 'Client'), float(data.get('hours_logged', 0.0)),
-                  data.get('date', str(datetime.date.today())), data.get('description', ''),
-                  float(data.get('billable_rate', 1500.0))))
-
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "message": "Timesheet entry logged successfully."}), 201
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/timesheets/<int:ts_id>', methods=['DELETE'])
-def erp_delete_timesheet(ts_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM timesheets WHERE id = ?", (ts_id,))
+        project_id = f"KC-PRJ-{random.randint(100, 999)}"
+        cursor.execute('''
+            INSERT INTO projects (project_id, name, client_name, description, manager_id, manager_name, team_members, start_date, deadline, status, priority, budget, progress)
+            VALUES (?, ?, ?, ?, ?, ?, '[]', date('now'), ?, 'Active', ?, ?, 0)
+        ''', (project_id, name, client_name, description, user['id'], user['name'], deadline, priority, budget))
         conn.commit()
+
+        audit_log(user['name'], "Created Project", "projects", project_id, new_val=name)
+        create_notification(1, "New Project Created", f"{user['name']} created project {name}", "tab-projects", "task", "CEO")
+
         conn.close()
-        return jsonify({"success": True, "message": "Timesheet entry deleted."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": True, "message": "Project created.", "project_id": project_id})
 
+@app.route('/api/workspace/tasks', methods=['GET', 'POST'])
+def workspace_tasks():
+    user, err = require_auth()
+    if err: return err
 
-@app.route('/api/erp/inquiries', methods=['GET'])
-def erp_inquiries():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    conn = get_db()
+    cursor = conn.cursor()
 
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM inquiries ORDER BY created_at DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/admin/convert-inquiry/<int:inquiry_id>', methods=['POST'])
-def convert_inquiry_to_client(inquiry_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM inquiries WHERE id = ?", (inquiry_id,))
-        inq = cursor.fetchone()
-        if not inq:
-            conn.close()
-            return jsonify({"error": "Inquiry not found"}), 404
-
-        inq_dict = dict(inq)
-        name = inq_dict.get('name')
-        email = inq_dict.get('email')
-        phone = inq_dict.get('phone', '')
-        company = inq_dict.get('company', name)
-        notes = f"Converted from inquiry: {inq_dict.get('message', '')}"
-
-        # Insert into clients table
-        cursor.execute(
-            "INSERT INTO clients (name, email, phone, company, tag, status, total_spent, notes) VALUES (?, ?, ?, ?, 'VIP', 'Deal', 0.0, ?)",
-            (name, email, phone, company, notes)
-        )
-        
-        # Update inquiry status
-        cursor.execute("UPDATE inquiries SET status = 'Converted' WHERE id = ?", (inquiry_id,))
-        audit_log_event("Admin", "INQUIRY_CONVERTED", "clients", name, "Pending", "Converted to Active CRM Client")
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": f"Successfully converted {name} into active client."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# --------------------------------------------------------------------------
-# ENTERPRISE WORK TOKEN SYSTEM (KC-WT-00101), APPROVALS, AUDIT & SEARCH
-# --------------------------------------------------------------------------
-
-@app.route('/api/v1/work-tokens', methods=['GET', 'POST'])
-@app.route('/api/erp/work-tokens', methods=['GET', 'POST'])
-def handle_work_tokens():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
     if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM work_tokens ORDER BY id DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
-
-    elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            token_id = generate_unique_id('KC-WT')
-            checklist_str = json.dumps(data.get('checklist', [])) if isinstance(data.get('checklist'), list) else data.get('checklist', '[]')
-            github_repo = data.get('github_repo', '').strip()
-            github_pr_link = data.get('github_pr_link', '').strip()
-            attachment_pdf = data.get('attachment_pdf', '').strip()
-            
-            cursor.execute('''
-                INSERT INTO work_tokens (token_id, project_title, client_name, milestone_id, title, description, assigned_by, assigned_to, priority, estimated_hours, billable_hours, billing_rate, deadline, status, checklist, github_repo, github_pr_link, attachment_pdf)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (token_id, data.get('project_title', 'General Consulting'), data.get('client_name', 'Client'),
-                  data.get('milestone_id', ''), data.get('title'), data.get('description', ''),
-                  data.get('assigned_by', 'PM'), data.get('assigned_to'), data.get('priority', 'Medium'),
-                  float(data.get('estimated_hours', 4.0)), float(data.get('billable_hours', 4.0)),
-                  float(data.get('billing_rate', 1500.0)), data.get('deadline', ''),
-                  data.get('status', 'Assigned'), checklist_str, github_repo, github_pr_link, attachment_pdf))
-
-            audit_log_event(data.get('assigned_by', 'PM'), "WORK_TOKEN_CREATED", "work_tokens", token_id, "", f"Assigned to {data.get('assigned_to')}: {data.get('title')} (GitHub: {github_repo})")
-            conn.commit()
-            conn.close()
-            return jsonify({"success": True, "token_id": token_id, "message": "Work Token created successfully."}), 201
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/v1/work-tokens/<int:token_db_id>/status', methods=['PUT'])
-def update_work_token_status(token_db_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    data = request.json
-    new_status = data.get('status', 'In Progress')
-    user_name = data.get('user_name', 'User')
-    github_pr_link = data.get('github_pr_link', '').strip()
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT token_id, status FROM work_tokens WHERE id = ?", (token_db_id,))
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
-            return jsonify({"error": "Work Token not found"}), 404
-
-        token_id, old_status = row[0], row[1]
-        
-        valid_statuses = ['Draft', 'Assigned', 'Accepted', 'In Progress', 'Blocked', 'Submitted', 'QA Review', 'Revision Required', 'Resubmitted', 'Approved', 'Completed', 'Billed', 'Cancelled']
-        if new_status not in valid_statuses:
-            conn.close()
-            return jsonify({"error": "Invalid Work Token status value."}), 400
-
-        if github_pr_link:
-            cursor.execute("UPDATE work_tokens SET status = ?, github_pr_link = ? WHERE id = ?", (new_status, github_pr_link, token_db_id))
+        filter_type = request.args.get('filter', 'all')
+        if filter_type == 'my':
+            cursor.execute("SELECT * FROM tasks WHERE assigned_to_id = ? ORDER BY id DESC", (user['id'],))
+        elif user['role'] in ['CEO', 'Manager']:
+            cursor.execute("SELECT * FROM tasks ORDER BY id DESC")
         else:
-            cursor.execute("UPDATE work_tokens SET status = ? WHERE id = ?", (new_status, token_db_id))
+            cursor.execute("SELECT * FROM tasks WHERE assigned_to_id = ? OR assigned_by_id = ? ORDER BY id DESC", (user['id'], user['id']))
 
-        conn.commit()
+        tasks = [dict(r) for r in cursor.fetchall()]
         conn.close()
-
-        audit_log_event(user_name, "WORK_TOKEN_STATUS_CHANGE", "work_tokens", token_id, old_status, new_status)
-        return jsonify({"success": True, "message": f"Work token {token_id} moved to {new_status}."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/v1/approvals', methods=['GET', 'POST'])
-def handle_approvals():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
-    if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM approvals ORDER BY id DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([dict(r) for r in rows])
+        return jsonify({"success": True, "tasks": tasks})
 
     elif request.method == 'POST':
-        data = request.json
-        try:
-            cursor = conn.cursor()
-            app_id = generate_unique_id('KC-APP')
-            cursor.execute('''
-                INSERT INTO approvals (approval_id, type, requester_name, amount, details, status)
-                VALUES (?, ?, ?, ?, ?, 'Pending')
-            ''', (app_id, data.get('type', 'Expense'), data.get('requester_name', 'Employee'),
-                  float(data.get('amount', 0.0)), data.get('details', '')))
-
-            audit_log_event(data.get('requester_name', 'Employee'), "APPROVAL_REQUESTED", "approvals", app_id, "", f"Requested approval for {data.get('type')}")
-            conn.commit()
+        if user['role'] not in ['CEO', 'Manager']:
             conn.close()
-            return jsonify({"success": True, "approval_id": app_id, "message": "Approval request submitted."}), 201
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": "Permission denied."}), 403
 
+        data = request.get_json(silent=True) or {}
+        title = data.get('title', '').strip()
+        project_id = data.get('project_id', '')
+        project_name = data.get('project_name', '')
+        assigned_to_id = data.get('assigned_to_id')
+        assigned_to_name = data.get('assigned_to_name', '')
+        priority = data.get('priority', 'Medium')
+        deadline = data.get('deadline', '')
+        estimated_hours = float(data.get('estimated_hours', 0))
+        description = data.get('description', '')
+        tags = data.get('tags', '')
 
-@app.route('/api/v1/approvals/<int:app_db_id>/action', methods=['POST'])
-def approval_action(app_db_id):
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    data = request.json
-    action = data.get('action', 'Approved')
-    approver = data.get('approver_name', 'CEO Admin')
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT approval_id, status FROM approvals WHERE id = ?", (app_db_id,))
-        row = cursor.fetchone()
-        if not row:
+        if not title or not assigned_to_id:
             conn.close()
-            return jsonify({"error": "Approval request not found"}), 404
+            return jsonify({"success": False, "error": "Title and Assignee are required."}), 400
 
-        app_id, old_status = row[0], row[1]
-        cursor.execute("UPDATE approvals SET status = ?, approver_name = ? WHERE id = ?", (action, approver, app_db_id))
+        task_id = f"KC-TSK-{random.randint(100, 999)}"
+        cursor.execute('''
+            INSERT INTO tasks (task_id, title, description, project_id, project_name, assigned_by_id, assigned_by_name, assigned_to_id, assigned_to_name, priority, status, start_date, deadline, estimated_hours, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Assigned', date('now'), ?, ?, ?)
+        ''', (task_id, title, description, project_id, project_name, user['id'], user['name'], assigned_to_id, assigned_to_name, priority, deadline, estimated_hours, tags))
+        conn.commit()
+
+        audit_log(user['name'], "Assigned Task", "tasks", task_id, new_val=f"Assigned to {assigned_to_name}")
+        create_notification(assigned_to_id, "New Task Assigned", f"{user['name']} assigned you: {title}", "tab-tasks", "task")
+
+        conn.close()
+        return jsonify({"success": True, "message": "Task created.", "task_id": task_id})
+
+@app.route('/api/workspace/tasks/<task_id>/status', methods=['PUT'])
+def workspace_update_task_status(task_id):
+    user, err = require_auth()
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').strip()
+    submission_notes = data.get('submission_notes', '')
+    submission_url = data.get('submission_url', '')
+    manager_review_notes = data.get('manager_review_notes', '')
+
+    allowed_statuses = ['Assigned', 'Accepted', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Changes Requested']
+    if new_status not in allowed_statuses:
+        return jsonify({"success": False, "error": f"Invalid status: {new_status}"}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,))
+    task = cursor.fetchone()
+    if not task:
+        conn.close()
+        return jsonify({"success": False, "error": "Task not found."}), 404
+
+    if new_status in ['Approved', 'Completed'] and user['role'] not in ['CEO', 'Manager']:
+        conn.close()
+        return jsonify({"success": False, "error": "Only CEO/Managers can approve tasks."}), 403
+
+    old_status = task['status']
+    cursor.execute('''
+        UPDATE tasks 
+        SET status = ?, 
+            submission_notes = COALESCE(NULLIF(?, ''), submission_notes),
+            submission_url = COALESCE(NULLIF(?, ''), submission_url),
+            manager_review_notes = COALESCE(NULLIF(?, ''), manager_review_notes),
+            updated_at = datetime('now', 'localtime')
+        WHERE task_id = ?
+    ''', (new_status, submission_notes, submission_url, manager_review_notes, task_id))
+
+    if new_status in ['Approved', 'Completed'] and task['project_id']:
+        cursor.execute("SELECT COUNT(*), SUM(CASE WHEN status IN ('Approved', 'Completed') THEN 1 ELSE 0 END) FROM tasks WHERE project_id = ?", (task['project_id'],))
+        total_p_tasks, done_p_tasks = cursor.fetchone()
+        if total_p_tasks and total_p_tasks > 0:
+            calc_progress = int((done_p_tasks / total_p_tasks) * 100)
+            cursor.execute("UPDATE projects SET progress = ? WHERE project_id = ?", (calc_progress, task['project_id']))
+
+    conn.commit()
+    audit_log(user['name'], "Updated Task Status", "tasks", task_id, old_val=old_status, new_val=new_status)
+    conn.close()
+    return jsonify({"success": True, "message": f"Task status updated to {new_status}."})
+
+@app.route('/api/workspace/tasks/<task_id>/comments', methods=['GET', 'POST'])
+def workspace_task_comments(task_id):
+    user, err = require_auth()
+    if err: return err
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM task_comments WHERE task_id = ? ORDER BY id ASC", (task_id,))
+        comments = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "comments": comments})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        comment_text = data.get('comment', '').strip()
+        attachment_name = data.get('attachment_name', '')
+        if not comment_text:
+            conn.close()
+            return jsonify({"success": False, "error": "Comment text is required."}), 400
+
+        cursor.execute('''
+            INSERT INTO task_comments (task_id, user_id, user_name, user_role, comment, attachment_name)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (task_id, user['id'], user['name'], user['role'], comment_text, attachment_name))
         conn.commit()
         conn.close()
+        return jsonify({"success": True, "message": "Comment posted."})
 
-        audit_log_event(approver, f"APPROVAL_{action.upper()}", "approvals", app_id, old_status, action)
-        return jsonify({"success": True, "message": f"Approval {app_id} marked as {action}."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# --- 9. Mail, Chat, Files, CRM, Invoices, Attendance, Leave, AI ---
+@app.route('/api/workspace/mail', methods=['GET', 'POST'])
+def workspace_mail():
+    user, err = require_auth()
+    if err: return err
 
+    conn = get_db()
+    cursor = conn.cursor()
 
-@app.route('/api/v1/audit-logs', methods=['GET'])
-def get_audit_logs():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+    if request.method == 'GET':
+        folder = request.args.get('folder', 'inbox').lower()
+        if folder == 'inbox':
+            cursor.execute("SELECT * FROM internal_messages WHERE receiver_id = ? AND folder != 'trash' ORDER BY id DESC", (user['id'],))
+        elif folder == 'sent':
+            cursor.execute("SELECT * FROM internal_messages WHERE sender_id = ? AND folder != 'trash' ORDER BY id DESC", (user['id'],))
+        elif folder == 'starred':
+            cursor.execute("SELECT * FROM internal_messages WHERE (receiver_id = ? OR sender_id = ?) AND is_starred = 1 ORDER BY id DESC", (user['id'], user['id']))
+        elif folder == 'trash':
+            cursor.execute("SELECT * FROM internal_messages WHERE (receiver_id = ? OR sender_id = ?) AND folder = 'trash' ORDER BY id DESC", (user['id'], user['id']))
+        else:
+            cursor.execute("SELECT * FROM internal_messages WHERE receiver_id = ? ORDER BY id DESC", (user['id'],))
 
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100")
-        rows = cursor.fetchall()
+        messages = [dict(r) for r in cursor.fetchall()]
         conn.close()
-        return jsonify([dict(r) for r in rows])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": True, "messages": messages})
 
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        to_username = data.get('to', '').strip().lower()
+        subject = data.get('subject', '').strip()
+        body = data.get('body', '').strip()
+        attachment_name = data.get('attachment_name', '')
 
-@app.route('/api/v1/global-search', methods=['GET'])
-def global_search():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
+        if not to_username or not subject or not body:
+            conn.close()
+            return jsonify({"success": False, "error": "Recipient, Subject, and Body are required."}), 400
+
+        cursor.execute("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR LOWER(emp_code) = ?", (to_username, to_username, to_username))
+        recipient = cursor.fetchone()
+        if not recipient:
+            conn.close()
+            return jsonify({"success": False, "error": f"Recipient '{to_username}' not found."}), 404
+
+        cursor.execute('''
+            INSERT INTO internal_messages (sender_id, sender_name, sender_username, receiver_id, receiver_name, receiver_username, subject, body, folder, is_read, is_starred, attachment_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'inbox', 0, 0, ?)
+        ''', (user['id'], user['name'], user['username'], recipient['id'], recipient['name'], recipient['username'], subject, body, attachment_name))
+        conn.commit()
+
+        create_notification(recipient['id'], "New Internal Mail", f"{user['name']}: {subject}", "tab-mail", "message")
+        conn.close()
+        return jsonify({"success": True, "message": "Mail sent successfully."})
+
+@app.route('/api/workspace/mail/<int:msg_id>/star', methods=['PUT'])
+def workspace_mail_toggle_star(msg_id):
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE internal_messages SET is_starred = CASE WHEN is_starred = 1 THEN 0 ELSE 1 END WHERE id = ? AND (receiver_id = ? OR sender_id = ?)", (msg_id, user['id'], user['id']))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/workspace/mail/<int:msg_id>/read', methods=['PUT'])
+def workspace_mail_mark_read(msg_id):
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE internal_messages SET is_read = 1 WHERE id = ? AND receiver_id = ?", (msg_id, user['id']))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/workspace/chat/channels', methods=['GET'])
+def workspace_chat_channels():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM chat_channels ORDER BY id ASC")
+    channels = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"success": True, "channels": channels})
+
+@app.route('/api/workspace/chat/messages', methods=['GET', 'POST'])
+def workspace_chat_messages():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        channel_id = request.args.get('channel_id', 'chan-general')
+        cursor.execute("SELECT * FROM chat_messages WHERE channel_id = ? ORDER BY id ASC LIMIT 100", (channel_id,))
+        messages = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "messages": messages})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        channel_id = data.get('channel_id', 'chan-general')
+        msg_text = data.get('message', '').strip()
+        attachment_url = data.get('attachment_url', '')
+
+        if not msg_text:
+            conn.close()
+            return jsonify({"success": False, "error": "Message text required."}), 400
+
+        cursor.execute('''
+            INSERT INTO chat_messages (channel_id, sender_id, sender_name, sender_role, message, attachment_url)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (channel_id, user['id'], user['name'], user['role'], msg_text, attachment_url))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Sent."})
+
+@app.route('/api/workspace/files', methods=['GET', 'POST'])
+def workspace_files():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        folder = request.args.get('folder', 'All')
+        if folder == 'All':
+            cursor.execute("SELECT * FROM company_files ORDER BY id DESC")
+        else:
+            cursor.execute("SELECT * FROM company_files WHERE folder = ? ORDER BY id DESC", (folder,))
+
+        all_files = [dict(r) for r in cursor.fetchall()]
+        filtered = [f for f in all_files if f['access_roles'] == 'All' or user['role'] in f['access_roles'] or user['role'] == 'CEO']
+        conn.close()
+        return jsonify({"success": True, "files": filtered})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        name = data.get('name', '').strip()
+        folder = data.get('folder', 'Internal')
+        subfolder = data.get('subfolder', '')
+        file_size = data.get('file_size', '500 KB')
+        file_type = data.get('file_type', 'PDF')
+        access_roles = data.get('access_roles', 'All')
+
+        if not name:
+            conn.close()
+            return jsonify({"success": False, "error": "File name is required."}), 400
+
+        cursor.execute('''
+            INSERT INTO company_files (folder, subfolder, name, file_size, file_type, uploaded_by, uploader_role, access_roles)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (folder, subfolder, name, file_size, file_type, user['name'], user['role'], access_roles))
+        conn.commit()
+        audit_log(user['name'], "Uploaded File", "company_files", name)
+        conn.close()
+        return jsonify({"success": True, "message": "File recorded."})
+
+@app.route('/api/workspace/crm/clients', methods=['GET', 'POST'])
+def workspace_crm_clients():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM clients ORDER BY id DESC")
+        clients = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "clients": clients})
+
+    elif request.method == 'POST':
+        if user['role'] not in ['CEO', 'Manager']:
+            conn.close()
+            return jsonify({"success": False, "error": "Permission denied."}), 403
+
+        data = request.get_json(silent=True) or {}
+        company_name = data.get('company_name', '').strip()
+        contact_person = data.get('contact_person', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        address = data.get('address', '').strip()
+        industry = data.get('industry', 'Technology')
+        status = data.get('status', 'Active')
+        notes = data.get('notes', '')
+
+        if not company_name or not contact_person:
+            conn.close()
+            return jsonify({"success": False, "error": "Company Name and Contact Person required."}), 400
+
+        client_id = f"KC-CLI-{random.randint(100, 999)}"
+        cursor.execute('''
+            INSERT INTO clients (client_id, company_name, contact_person, email, phone, address, industry, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (client_id, company_name, contact_person, email, phone, address, industry, status, notes))
+        conn.commit()
+        audit_log(user['name'], "Created Client", "clients", client_id, new_val=company_name)
+        conn.close()
+        return jsonify({"success": True, "message": "Client created.", "client_id": client_id})
+
+@app.route('/api/workspace/crm/proposals', methods=['GET', 'POST'])
+def workspace_proposals():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM proposals ORDER BY id DESC")
+        proposals = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "proposals": proposals})
+
+    elif request.method == 'POST':
+        if user['role'] not in ['CEO', 'Manager']:
+            conn.close()
+            return jsonify({"success": False, "error": "Permission denied."}), 403
+
+        data = request.get_json(silent=True) or {}
+        client_name = data.get('client_name', '').strip()
+        project_name = data.get('project_name', '').strip()
+        services = data.get('services', '').strip()
+        description = data.get('description', '')
+        pricing = float(data.get('pricing', 0))
+        timeline = data.get('timeline', '')
+        terms = data.get('terms', '')
+        payment_schedule = data.get('payment_schedule', '')
+
+        if not client_name or not project_name:
+            conn.close()
+            return jsonify({"success": False, "error": "Client and Project Name required."}), 400
+
+        prop_id = f"KC-PRO-{random.randint(100, 999)}"
+        cursor.execute('''
+            INSERT INTO proposals (proposal_id, client_name, project_name, services, description, pricing, timeline, terms, payment_schedule, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Sent')
+        ''', (prop_id, client_name, project_name, services, description, pricing, timeline, terms, payment_schedule))
+        conn.commit()
+        audit_log(user['name'], "Generated Proposal", "proposals", prop_id, new_val=f"{client_name} - {project_name}")
+        conn.close()
+        return jsonify({"success": True, "message": "Proposal generated.", "proposal_id": prop_id})
+
+@app.route('/api/workspace/crm/invoices', methods=['GET', 'POST'])
+def workspace_invoices():
+    user, err = require_auth()
+    if err: return err
+    if user['role'] not in ['CEO', 'Manager']:
+        return jsonify({"success": False, "error": "Access denied to finance."}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM invoices ORDER BY id DESC")
+        invoices = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "invoices": invoices})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        client_name = data.get('client_name', '').strip()
+        project_name = data.get('project_name', '').strip()
+        items = data.get('items', [])
+        subtotal = float(data.get('subtotal', 0))
+        tax_rate = float(data.get('tax_rate', 18.0))
+        tax_amount = float(data.get('tax_amount', (subtotal * tax_rate) / 100))
+        discount = float(data.get('discount', 0))
+        total = float(data.get('total', subtotal + tax_amount - discount))
+        due_date = data.get('due_date', '')
+        notes = data.get('notes', '')
+
+        if not client_name:
+            conn.close()
+            return jsonify({"success": False, "error": "Client name required."}), 400
+
+        inv_no = f"KC-INV-{random.randint(100, 999)}"
+        cursor.execute('''
+            INSERT INTO invoices (invoice_no, client_name, project_name, items_json, subtotal, tax_rate, tax_amount, discount, total, due_date, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Sent', ?)
+        ''', (inv_no, client_name, project_name, json.dumps(items), subtotal, tax_rate, tax_amount, discount, total, due_date, notes))
+        conn.commit()
+        audit_log(user['name'], "Issued Invoice", "invoices", inv_no, new_val=f"Rs. {total}")
+        conn.close()
+        return jsonify({"success": True, "message": "Invoice issued.", "invoice_no": inv_no})
+
+@app.route('/api/workspace/hr/attendance', methods=['GET', 'POST'])
+def workspace_attendance():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        if user['role'] in ['CEO', 'Manager']:
+            cursor.execute("SELECT * FROM attendance ORDER BY id DESC LIMIT 50")
+        else:
+            cursor.execute("SELECT * FROM attendance WHERE emp_name LIKE ? ORDER BY id DESC LIMIT 30", (f"%{user['name']}%",))
+        logs = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "attendance": logs})
+
+    elif request.method == 'POST':
+        action_type = request.json.get('action', 'clock_in') if request.json else 'clock_in'
+        today_str = datetime.date.today().strftime('%Y-%m-%d')
+        now_time = datetime.datetime.now().strftime('%I:%M %p')
+
+        cursor.execute("SELECT * FROM attendance WHERE emp_name LIKE ? AND date = ?", (f"%{user['name']}%", today_str))
+        record = cursor.fetchone()
+
+        if action_type == 'clock_in':
+            if record:
+                conn.close()
+                return jsonify({"success": False, "error": "Already clocked in today."}), 400
+            cursor.execute('''
+                INSERT INTO attendance (emp_id, emp_name, date, clock_in, status)
+                VALUES (?, ?, ?, ?, 'Present')
+            ''', (user.get('emp_code', f"EMP-{user['id']}"), user['name'], today_str, now_time))
+            conn.commit()
+            audit_log(user['name'], "Clocked In", "attendance", today_str)
+            conn.close()
+            return jsonify({"success": True, "message": f"Clocked in at {now_time}."})
+
+        elif action_type == 'clock_out':
+            if not record:
+                conn.close()
+                return jsonify({"success": False, "error": "You must clock in first."}), 400
+            cursor.execute('''
+                UPDATE attendance SET clock_out = ?, total_hours = 8.5 WHERE id = ?
+            ''', (now_time, record['id']))
+            conn.commit()
+            audit_log(user['name'], "Clocked Out", "attendance", today_str)
+            conn.close()
+            return jsonify({"success": True, "message": f"Clocked out at {now_time} (8.5 hrs)."})
+
+@app.route('/api/workspace/hr/leave', methods=['GET', 'POST', 'PUT'])
+def workspace_leave():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        if user['role'] in ['CEO', 'Manager']:
+            cursor.execute("SELECT * FROM leave_requests ORDER BY id DESC")
+        else:
+            cursor.execute("SELECT * FROM leave_requests WHERE emp_name LIKE ? ORDER BY id DESC", (f"%{user['name']}%",))
+        leaves = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "leaves": leaves})
+
+    elif request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        leave_type = data.get('leave_type', 'Casual')
+        start_date = data.get('start_date', '')
+        end_date = data.get('end_date', '')
+        reason = data.get('reason', '').strip()
+
+        if not start_date or not end_date or not reason:
+            conn.close()
+            return jsonify({"success": False, "error": "Dates and reason required."}), 400
+
+        cursor.execute('''
+            INSERT INTO leave_requests (emp_id, emp_name, leave_type, start_date, end_date, reason, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'Pending')
+        ''', (user.get('emp_code', f"EMP-{user['id']}"), user['name'], leave_type, start_date, end_date, reason))
+        conn.commit()
+        audit_log(user['name'], "Applied For Leave", "leave_requests", f"{start_date} to {end_date}")
+        create_notification(1, "New Leave Request", f"{user['name']} applied for {leave_type} leave", "tab-leave", "approval", "Manager")
+        conn.close()
+        return jsonify({"success": True, "message": "Leave submitted."})
+
+    elif request.method == 'PUT':
+        if user['role'] not in ['CEO', 'Manager']:
+            conn.close()
+            return jsonify({"success": False, "error": "Permission denied."}), 403
+
+        data = request.get_json(silent=True) or {}
+        leave_id = data.get('leave_id')
+        action = data.get('action', 'Approved')
+        review_notes = data.get('review_notes', '')
+
+        cursor.execute('''
+            UPDATE leave_requests SET status = ?, reviewed_by = ?, review_notes = ? WHERE id = ?
+        ''', (action, user['name'], review_notes, leave_id))
+        conn.commit()
+        audit_log(user['name'], f"Leave {action}", "leave_requests", leave_id)
+        conn.close()
+        return jsonify({"success": True, "message": f"Leave marked {action}."})
+
+@app.route('/api/workspace/meetings', methods=['GET', 'POST'])
+def workspace_meetings():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM meetings ORDER BY meeting_date ASC")
+        meetings = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "meetings": meetings})
+
+    elif request.method == 'POST':
+        if user['role'] not in ['CEO', 'Manager']:
+            conn.close()
+            return jsonify({"success": False, "error": "Permission denied."}), 403
+
+        data = request.get_json(silent=True) or {}
+        title = data.get('title', '').strip()
+        meeting_date = data.get('meeting_date', '')
+        meeting_time = data.get('meeting_time', '')
+        location_link = data.get('location_link', 'Google Meet / Zoom')
+        agenda = data.get('agenda', '')
+        participants = data.get('participants', [])
+        action_items = data.get('action_items', [])
+
+        if not title or not meeting_date:
+            conn.close()
+            return jsonify({"success": False, "error": "Title and date required."}), 400
+
+        cursor.execute('''
+            INSERT INTO meetings (title, organizer_id, organizer_name, participants_json, meeting_date, meeting_time, location_link, agenda, action_items_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, user['id'], user['name'], json.dumps(participants), meeting_date, meeting_time, location_link, agenda, json.dumps(action_items)))
+        conn.commit()
+        audit_log(user['name'], "Scheduled Meeting", "meetings", title)
+        conn.close()
+        return jsonify({"success": True, "message": "Meeting scheduled."})
+
+@app.route('/api/workspace/hr/interns', methods=['GET'])
+def workspace_interns():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM internship_details ORDER BY id ASC")
+    interns = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"success": True, "interns": interns})
+
+@app.route('/api/workspace/hr/performance', methods=['GET'])
+def workspace_performance():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM performance_reviews ORDER BY id DESC")
+    reviews = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"success": True, "reviews": reviews})
+
+@app.route('/api/workspace/announcements', methods=['GET', 'POST'])
+def workspace_announcements():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute("SELECT * FROM announcements ORDER BY id DESC LIMIT 20")
+        announcements = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "announcements": announcements})
+
+    elif request.method == 'POST':
+        if user['role'] not in ['CEO', 'Manager']:
+            conn.close()
+            return jsonify({"success": False, "error": "Permission denied."}), 403
+
+        data = request.get_json(silent=True) or {}
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        target = data.get('target_audience', 'All')
+        priority = data.get('priority', 'Normal')
+
+        if not title or not content:
+            conn.close()
+            return jsonify({"success": False, "error": "Title and content required."}), 400
+
+        cursor.execute('''
+            INSERT INTO announcements (title, content, target_audience, priority, author_name, author_role)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (title, content, target, priority, user['name'], user['role']))
+        conn.commit()
+        audit_log(user['name'], "Published Announcement", "announcements", title)
+        conn.close()
+        return jsonify({"success": True, "message": "Announcement published."})
+
+@app.route('/api/workspace/notifications', methods=['GET', 'PUT'])
+def workspace_notifications():
+    user, err = require_auth()
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'GET':
+        cursor.execute('''
+            SELECT * FROM notifications 
+            WHERE user_id = ? OR user_role = ? OR user_role = 'All' OR user_id = 0
+            ORDER BY id DESC LIMIT 25
+        ''', (user['id'], user['role']))
+        notifications = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({"success": True, "notifications": notifications})
+
+    elif request.method == 'PUT':
+        cursor.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ? OR user_role = ?", (user['id'], user['role']))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Marked read."})
+
+@app.route('/api/workspace/audit-logs', methods=['GET'])
+def workspace_audit_logs():
+    user, err = require_auth(['CEO', 'Manager'])
+    if err: return err
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100")
+    logs = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify({"success": True, "audit_logs": logs})
+
+@app.route('/api/workspace/search', methods=['GET'])
+def workspace_global_search():
+    user, err = require_auth()
+    if err: return err
 
     q = request.args.get('q', '').strip()
-    if not q:
-        return jsonify([])
+    if not q or len(q) < 2:
+        return jsonify({"success": True, "results": []})
 
+    conn = get_db()
+    cursor = conn.cursor()
+    term = f"%{q}%"
     results = []
+
+    # Search People
+    cursor.execute("SELECT id, emp_code, name, role, department, designation FROM users WHERE name LIKE ? OR username LIKE ? OR emp_code LIKE ? OR department LIKE ?", (term, term, term, term))
+    for r in cursor.fetchall():
+        results.append({"type": "People", "id": str(r['id']), "title": f"{r['name']} ({r['emp_code']})", "subtitle": f"{r['role']} • {r['department']}", "tab": "tab-team"})
+
+    # Search Tasks
+    cursor.execute("SELECT task_id, title, status, project_name FROM tasks WHERE title LIKE ? OR task_id LIKE ? OR description LIKE ? OR tags LIKE ?", (term, term, term, term))
+    for r in cursor.fetchall():
+        results.append({"type": "Task", "id": r['task_id'], "title": f"[{r['task_id']}] {r['title']}", "subtitle": f"{r['project_name']} • {r['status']}", "tab": "tab-tasks"})
+
+    # Search Projects
+    cursor.execute("SELECT project_id, name, client_name, status FROM projects WHERE name LIKE ? OR project_id LIKE ? OR description LIKE ?", (term, term, term))
+    for r in cursor.fetchall():
+        results.append({"type": "Project", "id": r['project_id'], "title": r['name'], "subtitle": f"{r['client_name']} • {r['status']}", "tab": "tab-projects"})
+
+    # Search Clients
+    if user['role'] in ['CEO', 'Manager']:
+        cursor.execute("SELECT client_id, company_name, contact_person, status FROM clients WHERE company_name LIKE ? OR contact_person LIKE ? OR client_id LIKE ?", (term, term, term))
+        for r in cursor.fetchall():
+            results.append({"type": "Client", "id": r['client_id'], "title": r['company_name'], "subtitle": f"Contact: {r['contact_person']} • {r['status']}", "tab": "tab-clients"})
+
+        cursor.execute("SELECT invoice_no, client_name, total, status FROM invoices WHERE invoice_no LIKE ? OR client_name LIKE ?", (term, term))
+        for r in cursor.fetchall():
+            results.append({"type": "Invoice", "id": r['invoice_no'], "title": f"Invoice {r['invoice_no']}", "subtitle": f"{r['client_name']} • Rs. {r['total']}", "tab": "tab-invoices"})
+
+    conn.close()
+    return jsonify({"success": True, "results": results[:20]})
+
+@app.route('/api/workspace/ai/query', methods=['POST'])
+def workspace_ai_query():
+    user, err = require_auth()
+    if err: return err
+
+    data = request.get_json(silent=True) or {}
+    query = data.get('query', '').strip().lower()
+    if not query:
+        return jsonify({"success": False, "error": "Query cannot be empty."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    role = user['role']
+    name = user['name']
+    response_text = ""
+
+    if "task" in query and ("my" in query or "today" in query or "do" in query):
+        cursor.execute("SELECT task_id, title, priority, deadline, status FROM tasks WHERE assigned_to_id = ? AND status NOT IN ('Completed', 'Approved')", (user['id'],))
+        tasks = cursor.fetchall()
+        if tasks:
+            task_list = "\n".join([f"- [{t['task_id']}] {t['title']} (Priority: {t['priority']}, Deadline: {t['deadline']}, Status: {t['status']})" for t in tasks])
+            response_text = f"Hello {name}, you currently have {len(tasks)} active tasks assigned to you:\n\n{task_list}\n\nYou can update status or start your time tracker anytime."
+        else:
+            response_text = f"All clear, {name}! You have zero pending tasks assigned for today."
+
+    elif "overdue" in query:
+        if role in ['CEO', 'Manager']:
+            cursor.execute("SELECT task_id, title, assigned_to_name, deadline FROM tasks WHERE deadline < date('now') AND status NOT IN ('Completed', 'Approved')")
+        else:
+            cursor.execute("SELECT task_id, title, assigned_to_name, deadline FROM tasks WHERE assigned_to_id = ? AND deadline < date('now') AND status NOT IN ('Completed', 'Approved')", (user['id'],))
+        overdue = cursor.fetchall()
+        if overdue:
+            od_list = "\n".join([f"- [{t['task_id']}] {t['title']} (Assignee: {t['assigned_to_name']}, Deadline was {t['deadline']})" for t in overdue])
+            response_text = f"Attention Required: Found {len(overdue)} overdue task(s):\n\n{od_list}"
+        else:
+            response_text = "Zero tasks are currently overdue. All project milestones are on schedule."
+
+    elif "workload" in query or "team" in query:
+        if role not in ['CEO', 'Manager']:
+            response_text = "Access Restricted: Team workload analytics are reserved for Managers and the CEO."
+        else:
+            cursor.execute("SELECT assigned_to_name, COUNT(*) as task_count FROM tasks WHERE status NOT IN ('Completed', 'Approved') GROUP BY assigned_to_name")
+            wl = cursor.fetchall()
+            wl_str = "\n".join([f"- {r['assigned_to_name']}: {r['task_count']} active tasks" for r in wl])
+            response_text = f"Current Team Workload Distribution:\n\n{wl_str}\n\nOverall engineering capacity is operating at ~78% bandwidth."
+
+    elif "summary" in query or "health" in query or "company" in query:
+        if role != 'CEO':
+            response_text = f"Company operations are progressing normally across active client milestones."
+        else:
+            cursor.execute("SELECT COUNT(*) FROM projects WHERE status = 'Active'")
+            act_p = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Completed'")
+            cmp_t = cursor.fetchone()[0]
+            cursor.execute("SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status = 'Paid'")
+            rev = cursor.fetchone()[0]
+            response_text = f"Executive Company Briefing (CEO Overview):\n\n- Active Client Projects: {act_p}\n- Total Completed Deliverables: {cmp_t}\n- Realized Revenue: Rs. {rev:,.2f}\n- Milestone On-Time Rate: 92.4%\n- Client Satisfaction Rating: 4.9 / 5.0\n\nAll cloud infrastructure nodes and database clusters are operating in green health."
+
+    elif "invoice" in query or "revenue" in query or "finance" in query:
+        if role != 'CEO':
+            response_text = "Access Restricted: Financial and invoice data is strictly accessible to the CEO."
+        else:
+            cursor.execute("SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status = 'Paid'")
+            paid = cursor.fetchone()[0]
+            cursor.execute("SELECT COALESCE(SUM(total), 0) FROM invoices WHERE status IN ('Sent', 'Draft')")
+            pending = cursor.fetchone()[0]
+            response_text = f"Financial Snapshot:\n\n- Collected Revenue: Rs. {paid:,.2f}\n- Pending Receivables: Rs. {pending:,.2f}\n- Cashflow Status: Balanced across all enterprise accounts."
+
+    else:
+        response_text = f"Hello {name}. I am Kapate AI, your workspace assistant. You can ask queries regarding:\n- What are my tasks today?\n- Which tasks are overdue?\n- Summarize team workload\n- Executive company summary (CEO)\n- Financial snapshot (CEO)"
+
+    conn.close()
+    return jsonify({"success": True, "response": response_text})
+
+# ==============================================================================
+# PUBLIC WEBSITE ENDPOINTS
+# ==============================================================================
+
+@app.route('/api/inquiries', methods=['POST'])
+def submit_public_inquiry():
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    service = data.get('service', 'Custom Software Development')
+    budget = data.get('budget', '')
+    timeline = data.get('timeline', '')
+    message = data.get('message', '')
+
+    if not name or not email or not phone:
+        return jsonify({"success": False, "error": "Name, email, and phone number are required."}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    ref_num = f"KC-{datetime.datetime.now().year}-{random.randint(1000, 9999)}"
+
     try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO inquiries (reference_num, reference_number, name, email, phone, service, budget, timeline, message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (ref_num, ref_num, name, email, phone, service, budget, timeline, message))
+    except Exception:
+        cursor.execute('''
+            INSERT INTO inquiries (name, email, phone, service, budget, timeline, message)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (name, email, phone, service, budget, timeline, message))
+    conn.commit()
+    conn.close()
 
-        # Search Work Tokens
-        cursor.execute("SELECT id, token_id as code, title as label, 'Work Token' as type, status FROM work_tokens WHERE token_id LIKE ? OR title LIKE ?", (f"%{q}%", f"%{q}%"))
-        for r in cursor.fetchall(): results.append(dict(r))
+    create_notification(1, "New Public Web Inquiry", f"From {name} ({email}) for {service} [Ref: {ref_num}]", "tab-clients", "alert", "CEO")
+    audit_log("Public Visitor", "Submitted Web Inquiry", "inquiries", ref_num, new_val=f"{name} - {service}")
 
-        # Search Employees
-        cursor.execute("SELECT id, emp_id as code, name as label, 'Employee' as type, role as status FROM employees WHERE emp_id LIKE ? OR name LIKE ?", (f"%{q}%", f"%{q}%"))
-        for r in cursor.fetchall(): results.append(dict(r))
+    return jsonify({"success": True, "reference_num": ref_num, "message": "Inquiry submitted successfully."})
 
-        # Search Clients
-        cursor.execute("SELECT id, email as code, name as label, 'Client' as type, company as status FROM clients WHERE name LIKE ? OR company LIKE ?", (f"%{q}%", f"%{q}%"))
-        for r in cursor.fetchall(): results.append(dict(r))
+@app.route('/api/reviews', methods=['GET', 'POST'])
+def public_reviews():
+    conn = get_db()
+    cursor = conn.cursor()
 
-        # Search Invoices
-        cursor.execute("SELECT id, invoice_no as code, client_name as label, 'Invoice' as type, status FROM invoices WHERE invoice_no LIKE ? OR client_name LIKE ?", (f"%{q}%", f"%{q}%"))
-        for r in cursor.fetchall(): results.append(dict(r))
-
-        # Search GitHub Repos
-        cursor.execute("SELECT id, repo_name as code, project_title as label, 'GitHub Repo' as type, assigned_to as status FROM github_repos WHERE repo_name LIKE ? OR project_title LIKE ?", (f"%{q}%", f"%{q}%"))
-        for r in cursor.fetchall(): results.append(dict(r))
-
-        conn.close()
-        return jsonify(results)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# --------------------------------------------------------------------------
-# GITHUB REPOSITORY INTEGRATION & MANAGEMENT API
-# --------------------------------------------------------------------------
-
-@app.route('/api/v1/github/repos', methods=['GET', 'POST'])
-def handle_github_repos():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header != "Bearer kapate-admin-secure-token-98765":
-        return jsonify({"error": "Unauthorized Access"}), 401
-
-    conn = sqlite3.connect(DB_FILE)
     if request.method == 'GET':
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM github_repos ORDER BY id DESC")
-        local_repos = [dict(r) for r in cursor.fetchall()]
+        cursor.execute("SELECT * FROM reviews WHERE status = 'Approved' ORDER BY id DESC")
+        reviews = [dict(r) for r in cursor.fetchall()]
         conn.close()
-
-        # Pre-seed default Civil-Suplier-App repo if empty
-        if not local_repos:
-            try:
-                conn = sqlite3.connect(DB_FILE)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR IGNORE INTO github_repos (repo_name, repo_url, description, project_title)
-                    VALUES ('Civil-Suplier-App', 'https://github.com/kapateconsultancy/Civil-Suplier-App', 'Civil Supplier Application & Material Procurement', 'Civil Supplier Management System')
-                ''')
-                conn.commit()
-                cursor.execute("SELECT * FROM github_repos ORDER BY id DESC")
-                local_repos = [dict(r) for r in cursor.fetchall()]
-                conn.close()
-            except Exception:
-                pass
-
-        # Optionally query GitHub API for live user/org repos
-        try:
-            gh_req = urllib.request.Request(
-                "https://api.github.com/users/kapateconsultancy/repos",
-                headers={"User-Agent": "Kapate-ERP-Server"}
-            )
-            with urllib.request.urlopen(gh_req, timeout=3) as response:
-                gh_data = json.loads(response.read().decode())
-                live_repo_names = {r['repo_name'] for r in local_repos}
-                for gr in gh_data:
-                    name = gr.get('name')
-                    if name and name not in live_repo_names:
-                        local_repos.append({
-                            "id": gr.get('id'),
-                            "repo_name": name,
-                            "repo_url": gr.get('html_url', f"https://github.com/kapateconsultancy/{name}"),
-                            "description": gr.get('description', '') or 'GitHub Repository',
-                            "project_title": "GitHub Project",
-                            "assigned_to": "Kapate Engineering Team",
-                            "is_private": 1 if gr.get('private') else 0,
-                            "created_at": gr.get('created_at', '')
-                        })
-        except Exception as e:
-            print(f"Live GitHub API fetch notice: {e}")
-
-        return jsonify(local_repos)
+        return jsonify({"success": True, "reviews": reviews})
 
     elif request.method == 'POST':
-        data = request.json
-        if not data or not data.get('repo_name'):
-            return jsonify({"error": "Repository name is required"}), 400
+        data = request.get_json(silent=True) or {}
+        name = data.get('name', '').strip()
+        role = data.get('role', 'Client')
+        company = data.get('company', '')
+        rating = int(data.get('rating', 5))
+        comment = data.get('comment', '').strip()
 
-        repo_name = data.get('repo_name').strip().replace(' ', '-')
-        description = data.get('description', '').strip()
-        project_title = data.get('project_title', '').strip() or repo_name
-        assigned_to = data.get('assigned_to', '').strip() or 'Tech Team'
-        is_private = 1 if data.get('is_private') else 0
-        repo_url = f"https://github.com/kapateconsultancy/{repo_name}"
-
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO github_repos (repo_name, repo_url, description, project_title, assigned_to, is_private)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (repo_name, repo_url, description, project_title, assigned_to, is_private))
-            repo_id = cursor.lastrowid
-            conn.commit()
+        if not name or not comment:
             conn.close()
+            return jsonify({"success": False, "error": "Name and review comment are required."}), 400
 
-            audit_log_event("Admin", "GITHUB_REPO_CREATED", "github_repos", repo_name, "", repo_url)
-
-            return jsonify({
-                "success": True,
-                "id": repo_id,
-                "repo_name": repo_name,
-                "repo_url": repo_url,
-                "clone_cmd": f"git clone {repo_url}.git",
-                "message": f"Repository {repo_name} created successfully under kapateconsultancy."
-            }), 201
-        except sqlite3.IntegrityError:
-            return jsonify({"error": f"Repository '{repo_name}' already exists in registry."}), 400
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-
-# --------------------------------------------------------------------------
-# EMPLOYEE SELF-REGISTRATION & OTP AUTHENTICATION
-# --------------------------------------------------------------------------
-
-@app.route('/api/erp/auth/send-otp', methods=['POST'])
-def erp_send_otp():
-    data = request.json
-    if not data or not data.get('email') or not data.get('phone'):
-        return jsonify({"error": "Email and mobile number are required"}), 400
-
-    email = data.get('email').strip()
-    phone = data.get('phone').strip()
-
-    # Check email exists for Login mode
-    is_reg = data.get('is_registration', True)
-    if not is_reg:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1 FROM employees WHERE email = ?", (email,))
-        user_exists = cursor.fetchone()
-        conn.close()
-        if not user_exists:
-            return jsonify({"error": "No registered employee found with this email"}), 404
-
-    # Generate 6-digit OTP code
-    otp_code = str(random.randint(100000, 999999))
-
-    # Save to SQLite otp_codes
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO otp_codes (email, phone, code) VALUES (?, ?, ?)", (email, phone, otp_code))
+        cursor.execute('''
+            INSERT INTO reviews (name, role, company, rating, comment, status)
+            VALUES (?, ?, ?, ?, ?, 'Approved')
+        ''', (name, role, company, rating, comment))
         conn.commit()
         conn.close()
+        return jsonify({"success": True, "message": "Review published successfully."})
 
-        print(f"\n[SMS OTP GATEWAY] Mobile Verification code for {phone} is: {otp_code}\n")
+# ==============================================================================
+# WORKSPACE & STATIC ROUTE HANDLERS
+# ==============================================================================
 
-        config = load_config()
+@app.route('/workspace')
+@app.route('/workspace/')
+def serve_workspace():
+    return send_from_directory('.', 'workspace.html')
 
-        # Send Real SMS via Twilio if configured
-        twilio_sid = config.get("TWILIO_ACCOUNT_SID")
-        twilio_auth = config.get("TWILIO_AUTH_TOKEN")
-        twilio_phone = config.get("TWILIO_PHONE_NUMBER")
-        
-        if twilio_sid and twilio_auth and twilio_phone:
-            try:
-                client = Client(twilio_sid, twilio_auth)
-                message = client.messages.create(
-                    body=f"Kapate ERP Portal: Your MFA verification code is {otp_code}. Valid for 10 minutes.",
-                    from_=twilio_phone,
-                    to=phone
-                )
-                print(f"[Twilio SMS Sent] Message SID {message.sid} to {phone}")
-            except Exception as sms_err:
-                print(f"[Twilio SMS Error] Failed to send SMS to {phone}. Details: {sms_err}")
+@app.route('/erp.html')
+@app.route('/admin.html')
+def redirect_to_workspace():
+    return redirect('/workspace.html', code=301)
 
-        # Send Email OTP
-        sender_email = config.get("SMTP_EMAIL")
-        sender_password = config.get("SMTP_PASSWORD")
-        smtp_server = config.get("SMTP_SERVER")
-        smtp_port = config.get("SMTP_PORT")
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
-        email_sent = False
-        email_status = "No credentials"
+@app.route('/<path:filename>')
+def serve_static_files(filename):
+    return send_from_directory('.', filename)
 
-        if sender_email and sender_password:
-            try:
-                msg = MIMEMultipart()
-                msg['From'] = sender_email
-                msg['To'] = email
-                msg['Subject'] = "MFA Security Code - Kapate Consultancy"
-
-                body = f"""
-                <html>
-                <body style="font-family: Arial, sans-serif; background-color: #f4f4f7; padding: 20px;">
-                    <div style="max-width: 500px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-                        <h2 style="color: #3b82f6; text-align: center; margin-bottom: 20px;">MFA Authentication Code</h2>
-                        <p>Hello,</p>
-                        <p>To verify your identity and access the Kapate Consultancy ERP Portal, please enter the following One-Time Password (OTP) in your browser window:</p>
-                        <div style="text-align: center; background: #f3f4f6; font-size: 28px; font-weight: 800; color: #1f2937; letter-spacing: 6px; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; margin: 20px 0;">
-                            {otp_code}
-                        </div>
-                        <p style="font-size: 13px; color: #6b7280; text-align: center;">This code is valid for 10 minutes. Do not share this OTP with anyone.</p>
-                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 25px 0;">
-                        <p style="font-size: 11px; color: #9ca3af; text-align: center;">Kapate Consultancy • Pune HQ • Secure Internal HRMS</p>
-                    </div>
-                </body>
-                </html>
-                """
-                msg.attach(MIMEText(body, 'html'))
-                server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
-                server.starttls()
-                server.login(sender_email, sender_password)
-                server.sendmail(sender_email, email, msg.as_string())
-                server.quit()
-                print(f"[Email OTP Sent] Dispatched verification code to {email}")
-                email_sent = True
-                email_status = f"Dispatched to {email}"
-            except Exception as mail_err:
-                print(f"[Email OTP Error] Failed to send email to {email}. Details: {mail_err}")
-                email_status = f"SMTP Error: {mail_err}"
-
-        # Return success response without exposing OTP code
-        return jsonify({
-            "success": True, 
-            "message": "Verification code generated and sent to your email.",
-            "email_sent": email_sent,
-            "email_status": email_status
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/erp/auth/verify-otp', methods=['POST'])
-def erp_verify_otp():
-    data = request.json
-    if not data or not data.get('email') or not data.get('code'):
-        return jsonify({"error": "Email and verification code are required"}), 400
-
-    email = data.get('email').strip()
-    phone = data.get('phone', '').strip()
-    code = data.get('code').strip()
-
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        
-        # Verify matching latest code
-        cursor.execute("SELECT code FROM otp_codes WHERE email = ? ORDER BY created_at DESC LIMIT 1", (email,))
-        row = cursor.fetchone()
-
-        if not row or row[0] != code:
-            conn.close()
-            return jsonify({"success": False, "error": "Invalid verification security code. Please check and try again."}), 400
-
-        # Remove OTP code after validation
-        cursor.execute("DELETE FROM otp_codes WHERE email = ?", (email,))
-
-        # Registration Flow
-        is_reg = data.get('is_registration', True)
-        if is_reg:
-            name = data.get('name', 'New Employee').strip()
-            role = data.get('role', 'Developer').strip()
-            dept = data.get('department', 'Engineering').strip()
-            emp_type = data.get('employment_type', 'Full-time').strip()
-            basic_pay = float(data.get('basic_pay', 30000.0))
-
-            # Check if email already registered right before inserting
-            cursor.execute("SELECT 1 FROM employees WHERE email = ?", (email,))
-            if cursor.fetchone():
-                conn.close()
-                return jsonify({"success": False, "error": "This email is already registered. Please switch to Sign In."}), 400
-
-            # Auto-assign next Employee ID
-            cursor.execute("SELECT COUNT(*) FROM employees")
-            count = cursor.fetchone()[0]
-            emp_id = f"KC-EMP-{101 + count}"
-
-            cursor.execute('''
-                INSERT INTO employees (emp_id, name, email, role, department, employment_type, join_date, basic_pay, allowances, deductions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 5000.0, 1000.0)
-            ''', (emp_id, name, email, role, dept, emp_type, str(datetime.date.today()), basic_pay))
-
-            cursor.execute("INSERT INTO activity_logs (user_name, action, details, icon) VALUES (?, ?, ?, ?)",
-                           (name, "Self Registration Completed", f"Joined as {emp_id} ({role})", "user-plus"))
-            
-            cursor.execute("INSERT INTO notifications (title, message, category) VALUES (?, ?, ?)",
-                           ("New Hire Registered", f"{name} ({emp_id}) completed self-registration.", "success"))
-            
-            conn.commit()
-            
-            # Fetch the final DB employee dict to return session details
-            cursor.execute("SELECT name, role, emp_id FROM employees WHERE email = ?", (email,))
-            emp_row = cursor.fetchone()
-            conn.close()
-
-            return jsonify({
-                "success": True,
-                "token": AUTH_TOKEN,
-                "role": emp_row[1],
-                "name": emp_row[0],
-                "emp_id": emp_row[2]
-            })
-
-        # Login Flow
-        else:
-            cursor.execute("SELECT name, role, emp_id FROM employees WHERE email = ?", (email,))
-            emp_row = cursor.fetchone()
-            conn.close()
-
-            if not emp_row:
-                return jsonify({"success": False, "error": "No registered employee record found for email."}), 404
-
-            return jsonify({
-                "success": True,
-                "token": AUTH_TOKEN,
-                "role": emp_row[1],
-                "name": emp_row[0],
-                "emp_id": emp_row[2]
-            })
-
-    except Exception as e:
-        print(f"[Verify OTP Exception]: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-# Run initialization on import for Gunicorn compatibility
+# Initialize on boot
 load_config()
+init_database()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
-    print(f"Flask server running on http://0.0.0.0:{port}")
+    print(f"Kapate Consultancy Server running on http://0.0.0.0:{port}")
     app.run(port=port, host='0.0.0.0', debug=True)
-

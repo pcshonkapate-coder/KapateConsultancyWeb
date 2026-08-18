@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kapate Workspace — CEO &amp; Enterprise Control Center</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brandBlue: '#2563eb',
+            brandCyan: '#06b6d4',
+            brandDark: '#0b0f17',
+            darkSurface: '#111827',
+            darkCard: '#1f2937',
+            darkBorder: '#374151',
+            brandAccent: '#3b82f6'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Workspace Styles -->
+  <link rel="stylesheet" href="workspace.css">
+</head>
+<body class="bg-brandDark text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+
+  <!-- ========================================================================= -->
+  <!-- 1. SPLIT-SCREEN AUTHENTICATION SCREEN -->
+  <!-- ========================================================================= -->
+  <div id="auth-screen" class="min-h-screen flex flex-col lg:flex-row w-full z-50">
+    <!-- Left Hero Branding -->
+    <div class="lg:w-1/2 bg-gradient-to-br from-slate-900 via-brandDark to-blue-950 p-8 lg:p-16 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-darkBorder relative overflow-hidden">
+      <div class="relative z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg">KC</div>
+          <div>
+            <div class="font-outfit font-bold text-xl tracking-tight text-white">KAPATE CONSULTANCY</div>
+            <div class="text-[11px] text-blue-400 font-mono font-medium tracking-widest uppercase">Enterprise Workspace Platform</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="my-10 lg:my-0 relative z-10 max-w-lg">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-4">
+          <span>Enterprise Central Operating Console</span>
+        </div>
+        <h1 class="text-3xl lg:text-4xl font-extrabold text-white font-outfit leading-tight mb-4">
+          Integrated CEO &amp; Multi-Role Operations Suite
+        </h1>
+        <p class="text-slate-400 text-sm leading-relaxed mb-6">
+          Real-time executive oversight, resource scheduling, project deliverable review workflows, confidential corporate communications, client financial ledgers, and secure RBAC governance.
+        </p>
+
+        <!-- Demo Profile 1-Click Cards -->
+        <div class="space-y-2.5">
+          <div class="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider">Quick Demo Profiles (1-Click Fill):</div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button type="button" class="demo-fill-btn p-2.5 bg-darkCard/80 hover:bg-slate-800 border border-darkBorder rounded-xl text-left transition group" data-user="ceo" data-pwd="Kapate@Ceo2026">
+              <div class="font-bold text-xs text-white group-hover:text-blue-400">CEO</div>
+              <div class="text-[10px] text-slate-400 font-mono">Shon Kapate</div>
+            </button>
+            <button type="button" class="demo-fill-btn p-2.5 bg-darkCard/80 hover:bg-slate-800 border border-darkBorder rounded-xl text-left transition group" data-user="manager01" data-pwd="Manager@2026">
+              <div class="font-bold text-xs text-white group-hover:text-blue-400">Manager</div>
+              <div class="text-[10px] text-slate-400 font-mono">Rohit Verma</div>
+            </button>
+            <button type="button" class="demo-fill-btn p-2.5 bg-darkCard/80 hover:bg-slate-800 border border-darkBorder rounded-xl text-left transition group" data-user="employee01" data-pwd="Emp@2026">
+              <div class="font-bold text-xs text-white group-hover:text-blue-400">Employee</div>
+              <div class="text-[10px] text-slate-400 font-mono">Siddharth P.</div>
+            </button>
+            <button type="button" class="demo-fill-btn p-2.5 bg-darkCard/80 hover:bg-slate-800 border border-darkBorder rounded-xl text-left transition group" data-user="intern01" data-pwd="Intern@2026">
+              <div class="font-bold text-xs text-white group-hover:text-blue-400">Intern</div>
+              <div class="text-[10px] text-slate-400 font-mono">Tanvi Joshi</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative z-10 flex items-center justify-between text-xs text-slate-500 font-mono">
+        <div>&copy; 2026 Kapate Consultancy</div>
+        <a href="index.html" class="hover:text-blue-400 transition">&larr; Return to Public Website</a>
+      </div>
+    </div>
+
+    <!-- Right Login Form -->
+    <div class="lg:w-1/2 bg-darkSurface flex items-center justify-center p-8 lg:p-16">
+      <div class="w-full max-w-md space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold font-outfit text-white">Sign In to Workspace</h2>
+          <p class="text-xs text-slate-400 mt-1">Authenticate using your assigned corporate credentials or employee ID.</p>
+        </div>
+
+        <div id="login-alert" class="hidden p-3.5 rounded-xl text-xs bg-red-500/10 border border-red-500/30 text-red-400 font-medium">
+          <span id="login-alert-msg">Authentication error</span>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Corporate Identity / Email / Username</label>
+            <input type="text" id="login-username" required placeholder="ceo or employee01" class="w-full px-4 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Access Password</label>
+              <a href="#" class="text-[11px] text-blue-400 hover:underline">Reset key?</a>
+            </div>
+            <input type="password" id="login-password" required placeholder="••••••••••••" class="w-full px-4 py-2.5 bg-darkCard border border-darkBorder rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+
+          <button type="submit" id="btn-login-submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm transition shadow-lg flex items-center justify-center gap-2">
+            <span>Authenticate &amp; Enter Workspace &rarr;</span>
+          </button>
+        </form>
+
+        <div class="pt-4 border-t border-darkBorder text-center">
+          <span class="text-xs text-slate-500">Secured with PBKDF2 Password Hashing &amp; Session RBAC Middleware</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. MAIN APPLICATION SHELL (VISIBLE POST AUTH) -->
+  <!-- ========================================================================= -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col bg-brandDark">
+
+    <!-- Top Navigation Bar -->
+    <header class="h-16 bg-darkSurface/90 backdrop-blur border-b border-darkBorder px-4 lg:px-6 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <!-- Mobile Sidebar Toggle -->
+        <button id="mobile-sidebar-toggle" class="lg:hidden p-2 rounded-lg bg-darkCard border border-darkBorder text-slate-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-xs">KC</div>
+          <div>
+            <div class="font-outfit font-bold text-sm tracking-tight text-white flex items-center gap-2">
+              <span>KAPATE WORKSPACE</span>
+              <span id="header-portal-indicator" class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono font-bold">CONTROL CENTER</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Omnibar / Search Trigger -->
+      <div class="hidden md:flex items-center flex-1 max-w-md mx-6">
+        <button type="button" class="open-search-btn w-full px-3.5 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-left text-xs text-slate-400 hover:border-slate-500 transition flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span>Search staff, projects, tasks, clients (Ctrl + K)...</span>
+          </div>
+          <kbd class="px-1.5 py-0.5 rounded bg-darkSurface border border-darkBorder text-[10px] font-mono">Ctrl K</kbd>
+        </button>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="flex items-center gap-2.5">
+        <!-- Live Stopwatch Tracker -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-xl bg-darkCard border border-darkBorder text-xs font-mono">
+          <div class="w-2 h-2 rounded-full bg-slate-500" id="timer-indicator"></div>
+          <span id="timer-display" class="text-slate-300 font-bold">00:00:00</span>
+          <button id="btn-toggle-timer" class="text-[11px] font-semibold text-blue-400 hover:text-blue-300 ml-1">Start Timer</button>
+        </div>
+
+        <!-- Quick Search Mobile Trigger -->
+        <button type="button" class="open-search-btn md:hidden p-2 rounded-xl bg-darkCard border border-darkBorder text-slate-300">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </button>
+
+        <!-- Notification Bell -->
+        <div class="relative group">
+          <button id="btn-notifications-toggle" class="p-2 rounded-xl bg-darkCard border border-darkBorder text-slate-300 hover:text-white relative">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span id="notification-unread-dot" class="w-2 h-2 bg-blue-500 rounded-full absolute top-1.5 right-1.5"></span>
+          </button>
+
+          <!-- Notification Dropdown -->
+          <div id="notifications-dropdown" class="hidden group-hover:block absolute right-0 mt-2 w-80 bg-darkSurface border border-darkBorder rounded-2xl shadow-2xl p-4 z-50">
+            <div class="flex items-center justify-between pb-2 border-b border-darkBorder mb-3">
+              <span class="font-bold text-xs text-white">System Notifications</span>
+              <button id="btn-mark-all-read" class="text-[10px] text-blue-400 hover:underline">Mark all read</button>
+            </div>
+            <div id="notifications-list" class="space-y-2 max-h-64 overflow-y-auto pr-1 text-xs">
+              <div class="text-slate-400 text-center py-4">No unread notifications.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Light/Dark Toggle -->
+        <button id="theme-toggle-workspace" class="p-2 rounded-xl bg-darkCard border border-darkBorder text-slate-300 hover:text-white" title="Toggle Light / Dark Mode">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </button>
+
+        <!-- Current User Avatar Capsule -->
+        <div class="flex items-center gap-2 pl-2 border-l border-darkBorder">
+          <div id="mobile-user-avatar" class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold flex items-center justify-center text-xs">SK</div>
+          <button id="btn-logout" class="px-2.5 py-1 text-xs text-slate-400 hover:text-red-400 font-semibold border border-darkBorder rounded-lg bg-darkCard hover:bg-slate-800 transition">
+            Exit
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Workspace Shell with Dedicated Sidebar -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+      <!-- ===================================================================== -->
+      <!-- 2.1 CEO / MULTI-ROLE SIDEBAR NAVIGATION -->
+      <!-- ===================================================================== -->
+      <aside id="main-sidebar" class="w-64 bg-darkSurface/95 border-r border-darkBorder flex flex-col justify-between shrink-0 absolute lg:relative z-40 inset-y-0 -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out h-[calc(100vh-4rem)]">
+        <!-- Sidebar Navigation Tree -->
+        <div class="p-4 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+
+          <!-- User Identity Badge -->
+          <div class="p-3 bg-darkCard border border-darkBorder rounded-2xl flex items-center gap-3">
+            <div id="sidebar-user-avatar" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+              SK
+            </div>
+            <div class="overflow-hidden">
+              <div id="sidebar-user-name" class="font-bold text-xs text-white truncate">Shon Kapate</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span id="sidebar-user-role-badge" class="px-1.5 py-0.2 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono font-bold">CEO</span>
+                <span id="sidebar-user-dept" class="text-[10px] text-slate-400 truncate">Executive</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Navigation Groups -->
+          <div class="space-y-4 text-xs font-medium">
+
+            <!-- Group 1: Core Navigation -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Command</div>
+
+              <button class="nav-item active w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-dashboard">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                  <span>Dashboard</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 2: People (CEO / HR Sub-Tree) -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">People &amp; Organization</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-team">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                  <span>All Employees</span>
+                </div>
+                <span id="nav-badge-employees" class="font-mono text-[10px] text-slate-400">8</span>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-managers" data-role-req="CEO,Manager">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <span>Managers</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-internships">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+                  <span>Interns</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-departments" data-role-req="CEO,Manager">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                  <span>Departments</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 3: Deliverables & Work -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Work Delivery</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-projects">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  <span>Projects</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-tasks">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Tasks &amp; Review</span>
+                </div>
+                <span id="nav-badge-tasks" class="font-mono text-[10px] text-slate-400">7</span>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-calendar">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <span>Calendar &amp; Syncs</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-timetrack">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Time Tracking</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 4: Operations & HR -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Operations &amp; HR</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-attendance">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Attendance</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-leave">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <span>Leave Moderation</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-performance">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                  <span>Performance</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-files">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/></svg>
+                  <span>Company Files</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 5: Commercials & Finance (CEO/Manager Restricted) -->
+            <div class="space-y-1" data-role-req="CEO,Manager">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Commercials &amp; Finance</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-clients">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                  <span>Client CRM</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-proposals">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <span>Proposals</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-invoices" data-role-req="CEO">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                  <span>Invoices &amp; Billing</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 6: Communications & AI -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Communications &amp; AI</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-mail">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  <span>Internal Mail</span>
+                </div>
+                <span id="nav-badge-mail" class="font-mono text-[10px] text-blue-400">2</span>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-chat">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  <span>Real-Time Chat</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-ai">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  <span>Kapate AI Copilot</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-announcements">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+                  <span>Announcements</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Group 7: Security & Settings -->
+            <div class="space-y-1">
+              <div class="px-3 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1">Security &amp; Governance</div>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-audit" data-role-req="CEO,Manager">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <span>Audit Logs</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-roles" data-role-req="CEO">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                  <span>Roles &amp; Permissions</span>
+                </div>
+              </button>
+
+              <button class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-darkCard transition" data-tab="tab-settings">
+                <div class="flex items-center gap-2.5">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  <span>Settings</span>
+                </div>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Sidebar Footer Action -->
+        <div class="p-3 border-t border-darkBorder flex items-center justify-between text-[11px] text-slate-500 font-mono">
+          <span>Kapate OS v3.8</span>
+          <button id="mobile-sidebar-close" class="lg:hidden text-slate-400 hover:text-white">Close &times;</button>
+        </div>
+      </aside>
+
+      <!-- Sidebar Backdrop for Mobile -->
+      <div id="mobile-sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden lg:hidden"></div>
+
+      <!-- ===================================================================== -->
+      <!-- 2.2 MAIN CONTENT VIEWPORT PANES -->
+      <!-- ===================================================================== -->
+      <main id="workspace-viewport" class="flex-1 overflow-y-auto p-4 lg:p-8 bg-brandDark custom-scrollbar">
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: EXECUTIVE / ROLE DASHBOARD -->
+        <!-- =================================================================== -->
+        <div id="tab-dashboard" class="tab-pane active space-y-6">
+
+          <!-- Dashboard Welcome & Quick Controls -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-darkCard border border-darkBorder p-6 rounded-2xl relative overflow-hidden">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="dash-greeting-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/10 border border-blue-500/20 text-blue-400 uppercase">
+                  CEO COMMAND CENTER
+                </span>
+                <span class="text-xs text-slate-500 font-mono" id="dash-realtime-clock">August 2026</span>
+              </div>
+              <h2 id="dash-welcome-title" class="text-2xl lg:text-3xl font-extrabold font-outfit text-white mt-1">
+                Good Morning, Shon Kapate
+              </h2>
+              <p id="dash-welcome-subtitle" class="text-xs text-slate-400 mt-1 max-w-2xl">
+                Operational executive control center. Real-time visibility into finances, engineering projects, staff allocations, and organizational health.
+              </p>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div id="dash-quick-actions" class="flex flex-wrap items-center gap-2">
+              <button class="open-modal-trigger px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow" data-modal="modal-create-task">+ Assign Task</button>
+              <button class="open-modal-trigger px-3.5 py-2 rounded-xl bg-darkSurface border border-darkBorder hover:bg-slate-800 text-slate-200 font-semibold text-xs transition" data-modal="modal-create-employee">+ Add Employee</button>
+              <button class="open-modal-trigger px-3.5 py-2 rounded-xl bg-darkSurface border border-darkBorder hover:bg-slate-800 text-slate-200 font-semibold text-xs transition" data-modal="modal-create-project">+ Project</button>
+              <button class="open-modal-trigger px-3.5 py-2 rounded-xl bg-darkSurface border border-darkBorder hover:bg-slate-800 text-slate-200 font-semibold text-xs transition" data-modal="modal-create-invoice">+ Invoice</button>
+            </div>
+          </div>
+
+          <!-- CEO "NEEDS ATTENTION" WIDGET -->
+          <div id="ceo-needs-attention-widget" class="bg-darkCard border border-amber-500/30 p-5 rounded-2xl space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <h3 class="font-outfit font-bold text-sm text-amber-400 tracking-wide uppercase">NEEDS EXECUTIVE ATTENTION</h3>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400">Real-time organizational risk monitor</span>
+            </div>
+            <div id="needs-attention-items-list" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl text-xs text-slate-400">Loading alerts...</div>
+            </div>
+          </div>
+
+          <!-- Dynamic Role Metric KPI Cards -->
+          <div id="dash-metrics-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Populated dynamically via workspace.js -->
+          </div>
+
+          <!-- Dashboard Mid-Section: Performance Chart & Backlog -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left: Company Performance & Workload Chart -->
+            <div class="lg:col-span-2 bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-base text-white font-outfit">Company Delivery &amp; Milestone Trajectory</h3>
+                  <p class="text-xs text-slate-400">Monthly deliverable completion vs projected SLA milestones</p>
+                </div>
+                <button class="px-2.5 py-1 rounded bg-darkSurface border border-darkBorder text-[11px] font-mono text-blue-400" onclick="exportData('tasks')">Export Tasks CSV</button>
+              </div>
+
+              <div class="h-64 w-full">
+                <canvas id="companyPerformanceChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Right: Active Sprints & Priority Tasks -->
+            <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-bold text-sm text-white font-outfit">Active Deliverables</h3>
+                  <button class="nav-switch-btn text-[11px] text-blue-400 hover:underline" data-target="tab-tasks">View all &rarr;</button>
+                </div>
+                <div id="dash-tasks-list" class="space-y-2.5 text-xs">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- Quick Attendance Summary Banner -->
+              <div class="pt-4 border-t border-darkBorder">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-slate-400">Today's Duty Status:</span>
+                  <button id="dash-btn-clock-action" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs transition">
+                    Clock In Shift
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: PEOPLE -> ALL EMPLOYEES (COMPREHENSIVE DIRECTORY & TABLE) -->
+        <!-- =================================================================== -->
+        <div id="tab-team" class="tab-pane space-y-6">
+
+          <!-- Header & Controls -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">People &rarr; All Employees</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Comprehensive organizational roster, performance metrics, and individual employee dossier management.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button class="open-modal-trigger px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition" data-modal="modal-create-employee">+ Add Employee</button>
+              <button class="px-3 py-1.5 rounded-xl bg-darkCard border border-darkBorder hover:bg-slate-800 text-slate-200 font-semibold text-xs transition" onclick="exportData('employees')">Export CSV</button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Bar -->
+          <div class="bg-darkCard border border-darkBorder p-4 rounded-2xl flex flex-wrap gap-3 items-center justify-between text-xs">
+            <div class="flex-1 min-w-[200px]">
+              <input type="text" id="emp-search-input" placeholder="Search by name, ID (EMP-001), designation, or username..." class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white font-mono focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <select id="emp-filter-dept" class="px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-slate-200 focus:outline-none">
+                <option value="All">All Departments</option>
+                <option value="Software Development">Software Development</option>
+                <option value="AI & Machine Learning">AI & Machine Learning</option>
+                <option value="UI/UX & Design">UI/UX & Design</option>
+                <option value="Cloud Infrastructure & DevOps">Cloud & DevOps</option>
+                <option value="Executive & Management">Executive</option>
+              </select>
+
+              <select id="emp-filter-role" class="px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-slate-200 focus:outline-none">
+                <option value="All">All Roles</option>
+                <option value="CEO">CEO</option>
+                <option value="Manager">Manager</option>
+                <option value="Employee">Employee</option>
+                <option value="Intern">Intern</option>
+              </select>
+
+              <select id="emp-filter-status" class="px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-slate-200 focus:outline-none">
+                <option value="All">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Comprehensive Employee Table -->
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 font-mono uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th class="p-3.5">Employee</th>
+                    <th class="p-3.5">ID</th>
+                    <th class="p-3.5">Department</th>
+                    <th class="p-3.5">Designation</th>
+                    <th class="p-3.5">Manager</th>
+                    <th class="p-3.5">Contact / Email</th>
+                    <th class="p-3.5">Status</th>
+                    <th class="p-3.5">Joined</th>
+                    <th class="p-3.5">Rating</th>
+                    <th class="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="employees-table-body" class="divide-y divide-darkBorder font-mono">
+                  <!-- Populated via workspace.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: EMPLOYEE FULL PROFILE DOSSIER (VIEW PROFILE VIEW) -->
+        <!-- =================================================================== -->
+        <div id="tab-employee-profile" class="tab-pane space-y-6">
+
+          <!-- Profile Top Header Navigation -->
+          <div class="flex items-center justify-between">
+            <button class="nav-switch-btn px-3 py-1.5 rounded-xl bg-darkCard border border-darkBorder text-xs text-blue-400 hover:text-white font-semibold flex items-center gap-1.5" data-target="tab-team">
+              <span>&larr; Back to Employee Directory</span>
+            </button>
+            <div class="flex items-center gap-2">
+              <button id="profile-btn-edit-employment" class="px-3 py-1.5 rounded-xl bg-darkCard border border-darkBorder text-xs text-slate-200 hover:bg-slate-800 font-semibold">Edit Employment / Salary</button>
+              <button id="profile-btn-status-toggle" class="px-3 py-1.5 rounded-xl bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-semibold hover:bg-rose-600/30">Deactivate Account</button>
+            </div>
+          </div>
+
+          <!-- Profile Hero Card -->
+          <div class="bg-darkCard border border-darkBorder rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div id="ep-avatar" class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-extrabold flex items-center justify-center text-3xl shadow-xl shrink-0">
+              RS
+            </div>
+            <div class="flex-1 text-center md:text-left space-y-2">
+              <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <h2 id="ep-name" class="text-2xl font-bold font-outfit text-white">Rahul Sharma</h2>
+                <span id="ep-id" class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">EMP-001</span>
+                <span id="ep-status" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+              </div>
+              <p id="ep-designation" class="text-xs text-slate-300 font-medium">Senior Software Developer &bull; <span id="ep-department" class="text-blue-400">Software Development</span></p>
+              <div class="flex flex-wrap justify-center md:justify-start gap-4 text-xs font-mono text-slate-400 pt-1">
+                <div>Manager: <strong id="ep-manager" class="text-slate-200">Rohit Verma</strong></div>
+                <div>Joined: <strong id="ep-joined" class="text-slate-200">12 Jan 2026</strong></div>
+                <div>Email: <strong id="ep-email" class="text-slate-200">rahul@internal.kapate</strong></div>
+                <div>Phone: <strong id="ep-phone" class="text-slate-200">+91 9822001100</strong></div>
+              </div>
+            </div>
+
+            <!-- Profile Top Quick Stats -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono shrink-0">
+              <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                <div class="text-[10px] text-slate-500 uppercase">Projects</div>
+                <div id="ep-stat-projects" class="text-base font-bold text-blue-400">3</div>
+              </div>
+              <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                <div class="text-[10px] text-slate-500 uppercase">Done Tasks</div>
+                <div id="ep-stat-tasks" class="text-base font-bold text-emerald-400">42</div>
+              </div>
+              <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                <div class="text-[10px] text-slate-500 uppercase">Score</div>
+                <div id="ep-stat-rating" class="text-base font-bold text-yellow-400">4.8</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Deep Tab Bar -->
+          <div class="flex border-b border-darkBorder overflow-x-auto space-x-2 text-xs font-semibold">
+            <button class="profile-subtab-btn active px-4 py-2.5 border-b-2 border-blue-500 text-blue-400 whitespace-nowrap" data-target="ep-pane-overview">Overview</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-personal">Personal</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-employment">Employment</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-projects">Projects</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-tasks">Tasks</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-attendance">Attendance</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-leave">Leave</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-performance">Performance</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-documents">Documents</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-activity">Activity</button>
+            <button class="profile-subtab-btn px-4 py-2.5 text-slate-400 hover:text-white whitespace-nowrap" data-target="ep-pane-notes">CEO Notes</button>
+          </div>
+
+          <!-- Profile Deep Panes -->
+          <div id="profile-panes-container">
+
+            <!-- Subtab 1: Overview -->
+            <div id="ep-pane-overview" class="profile-pane active space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-3">
+                  <h4 class="font-bold text-sm text-white font-outfit">Assigned Resources &amp; Equipment</h4>
+                  <div class="space-y-1.5 font-mono text-slate-300">
+                    <div class="flex justify-between py-1 border-b border-darkBorder"><span>Corporate Laptop:</span> <span class="text-white">Apple MacBook Pro 16" (M3 Pro)</span></div>
+                    <div class="flex justify-between py-1 border-b border-darkBorder"><span>Git Access:</span> <span class="text-blue-400">github.com/kapate-eng</span></div>
+                    <div class="flex justify-between py-1 border-b border-darkBorder"><span>Cloud IAM:</span> <span class="text-emerald-400">AWS Dev Tier (Role: Engineer)</span></div>
+                    <div class="flex justify-between py-1"><span>Workspace Tier:</span> <span class="text-cyan-400">Full Standard Suite</span></div>
+                  </div>
+                </div>
+
+                <div class="bg-darkCard border border-darkBorder p-5 rounded-2xl space-y-3">
+                  <h4 class="font-bold text-sm text-white font-outfit">Key Deliverable Focus</h4>
+                  <p class="text-slate-300 leading-relaxed">
+                    Lead frontend architect on the HIPAA telemedicine platform. Responsible for WebRTC stream stability, doctor digital signature canvas, and patient EHR profile rendering modules.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtab 2: Personal Information -->
+            <div id="ep-pane-personal" class="profile-pane hidden space-y-4">
+              <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <h4 class="font-bold text-sm text-white font-outfit">Personal Details (Restricted Access)</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                  <div>
+                    <label class="block text-slate-400 mb-1">Date of Birth</label>
+                    <input type="text" id="ep-in-dob" value="1996-05-14" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Contact Phone</label>
+                    <input type="text" id="ep-in-phone" value="+91 9422019988" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Residential Address</label>
+                    <input type="text" id="ep-in-address" value="Baner, Pune, Maharashtra, India" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Emergency Contact</label>
+                    <input type="text" id="ep-in-emergency" value="+91 9422019989 (Parent)" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                </div>
+                <button id="ep-btn-save-personal" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl">Save Personal Information</button>
+              </div>
+            </div>
+
+            <!-- Subtab 3: Employment Information & Compensation -->
+            <div id="ep-pane-employment" class="profile-pane hidden space-y-4">
+              <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <h4 class="font-bold text-sm text-white font-outfit">Employment &amp; Compensation (CEO Restricted)</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+                  <div>
+                    <label class="block text-slate-400 mb-1">Designation</label>
+                    <input type="text" id="ep-in-designation" value="Senior Full-Stack Engineer" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Department</label>
+                    <select id="ep-in-department" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                      <option value="Software Development">Software Development</option>
+                      <option value="AI & Machine Learning">AI & Machine Learning</option>
+                      <option value="UI/UX & Design">UI/UX & Design</option>
+                      <option value="Cloud Infrastructure & DevOps">Cloud & DevOps</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Role Permission</label>
+                    <select id="ep-in-role" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                      <option value="Employee">Employee</option>
+                      <option value="Manager">Manager</option>
+                      <option value="CEO">CEO</option>
+                      <option value="Intern">Intern</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Assigned Manager</label>
+                    <input type="text" id="ep-in-manager" value="Rohit Verma" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Employment Type</label>
+                    <select id="ep-in-employment-type" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                      <option value="Full-Time">Full-Time</option>
+                      <option value="Part-Time">Part-Time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Monthly Compensation (INR)</label>
+                    <input type="number" id="ep-in-salary" value="95000" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-emerald-400 font-bold">
+                  </div>
+                </div>
+                <button id="ep-btn-save-employment" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl">Update Employment &amp; Compensation</button>
+              </div>
+            </div>
+
+            <!-- Subtab 4: Projects -->
+            <div id="ep-pane-projects" class="profile-pane hidden space-y-4">
+              <div id="ep-projects-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Subtab 5: Tasks & CEO Override Controls -->
+            <div id="ep-pane-tasks" class="profile-pane hidden space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-sm text-white font-outfit">Assigned Tasks &amp; CEO Override Controls</h4>
+                <span class="text-[10px] font-mono text-slate-400">Overrides are recorded in audit logs with administrative reasons</span>
+              </div>
+              <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-lg">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-darkSurface border-b border-darkBorder font-mono text-[10px] text-slate-400 uppercase">
+                    <tr>
+                      <th class="p-3">Task ID</th>
+                      <th class="p-3">Title</th>
+                      <th class="p-3">Project</th>
+                      <th class="p-3">Priority</th>
+                      <th class="p-3">Deadline</th>
+                      <th class="p-3">Status</th>
+                      <th class="p-3 text-right">CEO Override</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ep-tasks-table-body" class="divide-y divide-darkBorder font-mono">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Subtab 6: Attendance -->
+            <div id="ep-pane-attendance" class="profile-pane hidden space-y-4">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Present Days</div>
+                  <div id="ep-att-present" class="text-xl font-bold text-emerald-400 mt-1">21</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Late Arrival</div>
+                  <div id="ep-att-late" class="text-xl font-bold text-amber-400 mt-1">1</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Leaves Taken</div>
+                  <div id="ep-att-leaves" class="text-xl font-bold text-rose-400 mt-1">2</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Attendance Rate</div>
+                  <div id="ep-att-rate" class="text-xl font-bold text-blue-400 mt-1">96.5%</div>
+                </div>
+              </div>
+
+              <!-- Attendance Log Table -->
+              <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden">
+                <table class="w-full text-left text-xs font-mono">
+                  <thead class="bg-darkSurface border-b border-darkBorder text-[10px] text-slate-400 uppercase">
+                    <tr>
+                      <th class="p-3">Date</th>
+                      <th class="p-3">Clock In</th>
+                      <th class="p-3">Clock Out</th>
+                      <th class="p-3">Total Hours</th>
+                      <th class="p-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ep-attendance-table-body" class="divide-y divide-darkBorder">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Subtab 7: Leave -->
+            <div id="ep-pane-leave" class="profile-pane hidden space-y-4">
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Available Balance</div>
+                  <div class="text-xl font-bold text-emerald-400 mt-1">18 Days</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Used Leaves</div>
+                  <div class="text-xl font-bold text-blue-400 mt-1">2 Days</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Pending Approval</div>
+                  <div class="text-xl font-bold text-amber-400 mt-1">0 Days</div>
+                </div>
+                <div class="p-4 bg-darkCard border border-darkBorder rounded-2xl">
+                  <div class="text-slate-400 text-[10px]">Rejected</div>
+                  <div class="text-xl font-bold text-slate-400 mt-1">0 Days</div>
+                </div>
+              </div>
+
+              <div id="ep-leave-history" class="space-y-2">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Subtab 8: Performance -->
+            <div id="ep-pane-performance" class="profile-pane hidden space-y-4">
+              <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-bold text-sm text-white font-outfit">Performance Scorecard &amp; Historical Trajectory</h4>
+                  <span class="text-xs font-mono font-bold text-yellow-400">Rating: 4.8 / 5.0</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                  <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                    <div class="text-slate-400">On-Time Delivery</div>
+                    <div class="text-emerald-400 font-bold text-base mt-0.5">96.2%</div>
+                  </div>
+                  <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                    <div class="text-slate-400">Code Review Score</div>
+                    <div class="text-blue-400 font-bold text-base mt-0.5">4.9 / 5.0</div>
+                  </div>
+                  <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                    <div class="text-slate-400">Architecture Contribution</div>
+                    <div class="text-cyan-400 font-bold text-base mt-0.5">4.8 / 5.0</div>
+                  </div>
+                  <div class="p-3 bg-darkSurface border border-darkBorder rounded-xl">
+                    <div class="text-slate-400">Peer Feedback</div>
+                    <div class="text-purple-400 font-bold text-base mt-0.5">Strong</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtab 9: Documents -->
+            <div id="ep-pane-documents" class="profile-pane hidden space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-sm text-white font-outfit">Verified Corporate Documents</h4>
+                <button class="px-3 py-1 bg-darkCard border border-darkBorder rounded-xl text-xs text-blue-400 hover:text-white font-semibold" onclick="showToast('Secure document upload initialized.', 'info')">+ Upload Document</button>
+              </div>
+              <div id="ep-documents-list" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Subtab 10: Activity Timeline -->
+            <div id="ep-pane-activity" class="profile-pane hidden space-y-4">
+              <h4 class="font-bold text-sm text-white font-outfit">Chronological Application Activity Log</h4>
+              <div id="ep-activity-list" class="space-y-2 text-xs font-mono">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Subtab 11: CEO Confidential Notes -->
+            <div id="ep-pane-notes" class="profile-pane hidden space-y-4">
+              <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h4 class="font-bold text-sm text-white font-outfit">Confidential Executive Notes</h4>
+                    <p class="text-xs text-slate-400">These internal notes are only visible to the CEO and authorized executive leadership.</p>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <textarea id="ep-in-new-note" rows="3" placeholder="Add confidential review, compensation observation, or promotion roadmap note..." class="w-full p-3 bg-darkSurface border border-darkBorder rounded-xl text-white text-xs"></textarea>
+                  <button id="ep-btn-save-note" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl">Save Confidential Note</button>
+                </div>
+
+                <div id="ep-notes-list" class="space-y-3 pt-2">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 4: PEOPLE -> MANAGERS -->
+        <!-- =================================================================== -->
+        <div id="tab-managers" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">People &rarr; Managers</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Engineering leaders and project directors managing deliverable teams.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-employee">+ Add Manager</button>
+          </div>
+
+          <div id="managers-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 5: PEOPLE -> DEPARTMENTS -->
+        <!-- =================================================================== -->
+        <div id="tab-departments" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">People &rarr; Departments</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Organizational divisions, budget allocations, and department leads.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-department">+ Create Department</button>
+          </div>
+
+          <div id="departments-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 6: SETTINGS -> ROLES & PERMISSIONS MATRIX -->
+        <!-- =================================================================== -->
+        <div id="tab-roles" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Roles &amp; Permissions Matrix</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Security matrix defining access rights for CEO, Manager, Employee, and Intern tiers.</p>
+            </div>
+            <span class="text-[10px] font-mono text-slate-400">Strict Server-Enforced RBAC</span>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-darkSurface border-b border-darkBorder text-[10px] text-slate-400 uppercase">
+                  <tr>
+                    <th class="p-3.5">Permission Capability</th>
+                    <th class="p-3.5">Category</th>
+                    <th class="p-3.5 text-blue-400">CEO</th>
+                    <th class="p-3.5 text-cyan-400">Manager</th>
+                    <th class="p-3.5 text-slate-300">Employee</th>
+                    <th class="p-3.5 text-purple-400">Intern</th>
+                  </tr>
+                </thead>
+                <tbody id="roles-matrix-body" class="divide-y divide-darkBorder">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 7: PROJECTS -->
+        <!-- =================================================================== -->
+        <div id="tab-projects" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Projects Management</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Enterprise client contracts, engineering deliverables, and milestone SLAs.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-project">+ Create Project</button>
+            </div>
+          </div>
+
+          <div id="projects-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 8: TASKS & REVIEW WORKFLOW -->
+        <!-- =================================================================== -->
+        <div id="tab-tasks" class="tab-pane space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Task Management &amp; Review Workflow</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Task lifecycle: Assigned &rarr; In Progress &rarr; Submitted &rarr; Approved / Changes Requested.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="task-filter-select" class="px-3 py-1.5 bg-darkCard border border-darkBorder rounded-xl text-xs text-white">
+                <option value="all">All Tasks</option>
+                <option value="my">My Assigned Tasks</option>
+              </select>
+              <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-task">+ Assign Task</button>
+              <button class="px-3 py-1.5 bg-darkCard border border-darkBorder hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-xl" onclick="exportData('tasks')">Export CSV</button>
+            </div>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 font-mono uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th class="p-3.5">Task</th>
+                    <th class="p-3.5">Project</th>
+                    <th class="p-3.5">Assignee</th>
+                    <th class="p-3.5">Priority</th>
+                    <th class="p-3.5">Deadline</th>
+                    <th class="p-3.5">Status</th>
+                    <th class="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tasks-table-body" class="divide-y divide-darkBorder font-mono">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 9: CALENDAR & SYNCS -->
+        <!-- =================================================================== -->
+        <div id="tab-calendar" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Calendar &amp; Scheduled Syncs</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Project milestones, client demonstrations, technical syncs, and sprint reviews.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-meeting">+ Schedule Meeting</button>
+          </div>
+
+          <div id="calendar-meetings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 10: TIME TRACKING -->
+        <!-- =================================================================== -->
+        <div id="tab-timetrack" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Time Tracking &amp; Timesheets</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Active sprint stopwatch, task effort logs, and engineering billable hours.</p>
+            </div>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder p-8 rounded-2xl text-center max-w-lg mx-auto space-y-4 shadow-2xl">
+            <div class="text-xs font-mono uppercase tracking-widest text-slate-400">Current Session Stopwatch</div>
+            <div id="main-stopwatch-display" class="text-5xl font-mono font-extrabold text-blue-400 tracking-wider">00:00:00</div>
+            <div class="flex justify-center gap-3">
+              <button id="btn-stopwatch-action" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg transition">Start Session</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 11: ATTENDANCE -->
+        <!-- =================================================================== -->
+        <div id="tab-attendance" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Duty Attendance Clock</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Daily shift attendance logs, clock in timestamps, and work hours accounting.</p>
+            </div>
+            <div class="flex gap-2">
+              <button id="att-btn-in" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition">Clock In</button>
+              <button id="att-btn-out" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs transition">Clock Out</button>
+              <button class="px-3 py-1.5 bg-darkCard border border-darkBorder text-slate-200 rounded-xl text-xs font-semibold" onclick="exportData('attendance')">Export CSV</button>
+            </div>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 uppercase text-[10px]">
+                <tr>
+                  <th class="p-3.5">Employee</th>
+                  <th class="p-3.5">Date</th>
+                  <th class="p-3.5">Clock In</th>
+                  <th class="p-3.5">Clock Out</th>
+                  <th class="p-3.5">Total Hours</th>
+                  <th class="p-3.5">Status</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-table-body" class="divide-y divide-darkBorder">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 12: LEAVE -->
+        <!-- =================================================================== -->
+        <div id="tab-leave" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Leave Management &amp; Moderation</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Apply for paid time off and manage organizational leave requests.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-apply-leave">+ Apply Leave</button>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 font-mono uppercase text-[10px]">
+                <tr>
+                  <th class="p-3.5">Employee</th>
+                  <th class="p-3.5">Type</th>
+                  <th class="p-3.5">Duration</th>
+                  <th class="p-3.5">Reason</th>
+                  <th class="p-3.5">Status</th>
+                  <th class="p-3.5 text-right">Moderation</th>
+                </tr>
+              </thead>
+              <tbody id="leave-table-body" class="divide-y divide-darkBorder font-mono">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 13: PERFORMANCE -->
+        <!-- =================================================================== -->
+        <div id="tab-performance" class="tab-pane space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold font-outfit text-white">Employee Performance Reviews</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Deliverable quality ratings, sprint completion percentages, and qualitative engineering evaluations.</p>
+          </div>
+
+          <div id="performance-reviews-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 14: COMPANY FILES -->
+        <!-- =================================================================== -->
+        <div id="tab-files" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Company File Vault</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Confidential internal repository governed by role permissions.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-upload-file">+ Upload File</button>
+          </div>
+
+          <div id="files-grid-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 15: CLIENT CRM -->
+        <!-- =================================================================== -->
+        <div id="tab-clients" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Client CRM &amp; Accounts</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Enterprise clients, point of contacts, project linkages, and account history.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-client">+ Add Client</button>
+          </div>
+
+          <div id="clients-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 16: PROPOSALS -->
+        <!-- =================================================================== -->
+        <div id="tab-proposals" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Proposals &amp; Commercial Statements</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Commercial scopes of work, pricing schedules, and branded PDF generation.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-proposal">+ Create Proposal</button>
+          </div>
+
+          <div id="proposals-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 17: INVOICES & BILLING (CEO RESTRICTED) -->
+        <!-- =================================================================== -->
+        <div id="tab-invoices" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Invoices &amp; Financial Ledger</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Itemized client invoices, 18% GST calculation, payment reconciliations, and receivables.</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-invoice">+ Issue Invoice</button>
+              <button class="px-3 py-1.5 bg-darkCard border border-darkBorder text-slate-200 rounded-xl text-xs font-semibold" onclick="exportData('invoices')">Export CSV</button>
+            </div>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 font-mono uppercase text-[10px]">
+                <tr>
+                  <th class="p-3.5">Invoice No</th>
+                  <th class="p-3.5">Client &amp; Project</th>
+                  <th class="p-3.5">Total Amount</th>
+                  <th class="p-3.5">Due Date</th>
+                  <th class="p-3.5">Status</th>
+                  <th class="p-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoices-table-body" class="divide-y divide-darkBorder font-mono">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 18: INTERNAL MAIL -->
+        <!-- =================================================================== -->
+        <div id="tab-mail" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Internal Mail System</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Confidential corporate messaging, executive announcements, and task updates.</p>
+            </div>
+            <button id="btn-compose-mail" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl">+ Compose Mail</button>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl p-4 shadow-xl">
+            <div id="mail-list-container" class="divide-y divide-darkBorder text-xs">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 19: REAL-TIME TEAM CHAT -->
+        <!-- =================================================================== -->
+        <div id="tab-chat" class="tab-pane space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold font-outfit text-white">Team Chat Channels</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Real-time team collaboration streams and project channels.</p>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl h-[550px] flex overflow-hidden shadow-xl">
+            <div class="w-56 bg-darkSurface border-r border-darkBorder p-3 space-y-2 shrink-0">
+              <div class="text-[10px] font-mono uppercase font-bold text-slate-400 px-2">Channels</div>
+              <div id="chat-channels-list" class="space-y-1">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <div class="flex-1 flex flex-col justify-between bg-brandDark">
+              <div class="p-3 border-b border-darkBorder font-bold text-xs text-white" id="active-chat-title"># Company General</div>
+              <div id="chat-messages-stream" class="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar text-xs">
+                <!-- Messages populated dynamically -->
+              </div>
+              <form id="chat-send-form" class="p-3 bg-darkSurface border-t border-darkBorder flex gap-2">
+                <input type="text" id="chat-message-input" placeholder="Type a message..." class="flex-1 px-3 py-2 bg-darkCard border border-darkBorder rounded-xl text-white text-xs focus:outline-none focus:border-blue-500">
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl">Send</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 20: KAPATE AI COPILOT -->
+        <!-- =================================================================== -->
+        <div id="tab-ai" class="tab-pane space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold font-outfit text-white">Kapate AI Workspace Copilot</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Permission-governed intelligence agent answering organizational queries dynamically.</p>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl p-6 space-y-4 shadow-xl">
+            <div class="flex flex-wrap gap-2 text-xs">
+              <button class="ai-prompt-chip px-3 py-1.5 bg-darkSurface hover:bg-slate-800 border border-darkBorder rounded-xl text-slate-300">"What are my tasks today?"</button>
+              <button class="ai-prompt-chip px-3 py-1.5 bg-darkSurface hover:bg-slate-800 border border-darkBorder rounded-xl text-slate-300">"Which tasks are overdue?"</button>
+              <button class="ai-prompt-chip px-3 py-1.5 bg-darkSurface hover:bg-slate-800 border border-darkBorder rounded-xl text-slate-300">"Executive company summary"</button>
+              <button class="ai-prompt-chip px-3 py-1.5 bg-darkSurface hover:bg-slate-800 border border-darkBorder rounded-xl text-slate-300">"Summarize team workload"</button>
+            </div>
+
+            <div id="ai-chat-stream" class="h-80 bg-darkSurface border border-darkBorder rounded-2xl p-4 overflow-y-auto space-y-3 text-xs custom-scrollbar">
+              <div class="flex gap-3 bg-darkCard p-3.5 rounded-xl border border-darkBorder">
+                <div class="w-7 h-7 rounded-lg bg-blue-600 flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">AI</div>
+                <div class="text-slate-300 leading-relaxed">
+                  Hello! I am Kapate AI. Ask me about your assigned deliverables, team workloads, project milestones, or organizational metrics.
+                </div>
+              </div>
+            </div>
+
+            <form id="ai-query-form" class="flex gap-2">
+              <input type="text" id="ai-query-input" placeholder="Ask Kapate AI anything about projects, tasks, or operations..." class="flex-1 px-4 py-2.5 bg-darkSurface border border-darkBorder rounded-xl text-white text-xs focus:outline-none focus:border-blue-500">
+              <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow">Query AI &rarr;</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 21: ANNOUNCEMENTS -->
+        <!-- =================================================================== -->
+        <div id="tab-announcements" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Announcements &amp; Company Broadcasts</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Official company notices and technical releases.</p>
+            </div>
+            <button class="open-modal-trigger px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl" data-modal="modal-create-announcement">+ Post Notice</button>
+          </div>
+
+          <div id="announcements-full-list" class="space-y-4">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 22: AUDIT LOGS -->
+        <!-- =================================================================== -->
+        <div id="tab-audit" class="tab-pane space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold font-outfit text-white">Immutable Security Audit Logs</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Chronological record of administrative operations, task overrides, logins, and permission changes.</p>
+            </div>
+            <span class="text-[10px] font-mono text-emerald-400">Tamper-Evident Trail Active</span>
+          </div>
+
+          <div class="bg-darkCard border border-darkBorder rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-darkSurface border-b border-darkBorder text-slate-400 uppercase text-[10px]">
+                <tr>
+                  <th class="p-3.5">Timestamp</th>
+                  <th class="p-3.5">Actor</th>
+                  <th class="p-3.5">Action</th>
+                  <th class="p-3.5">Target Entity</th>
+                  <th class="p-3.5">Reason / Notes</th>
+                  <th class="p-3.5">IP Address</th>
+                </tr>
+              </thead>
+              <tbody id="audit-logs-table-body" class="divide-y divide-darkBorder">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 23: SETTINGS -->
+        <!-- =================================================================== -->
+        <div id="tab-settings" class="tab-pane space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold font-outfit text-white">Workspace &amp; Account Settings</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Personal security settings and account preferences.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-mono">
+            <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+              <h3 class="font-bold text-sm text-white font-outfit">My Profile Details</h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-slate-400 mb-1">Full Name</label>
+                  <input type="text" id="settings-profile-name" disabled class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-slate-300">
+                </div>
+                <div>
+                  <label class="block text-slate-400 mb-1">Corporate Username</label>
+                  <input type="text" id="settings-profile-user" disabled class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-slate-300">
+                </div>
+                <div>
+                  <label class="block text-slate-400 mb-1">Assigned Role</label>
+                  <input type="text" id="settings-profile-role" disabled class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-blue-400 font-bold">
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-darkCard border border-darkBorder p-6 rounded-2xl space-y-4">
+              <h3 class="font-bold text-sm text-white font-outfit">Security &amp; Password Update</h3>
+              <form id="change-pwd-form" class="space-y-3">
+                <div>
+                  <label class="block text-slate-400 mb-1">Current Password</label>
+                  <input type="password" id="pwd-current" required placeholder="••••••••••••" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                </div>
+                <div>
+                  <label class="block text-slate-400 mb-1">New Password</label>
+                  <input type="password" id="pwd-new" required placeholder="••••••••••••" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+                </div>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition">Update Password</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MODALS (CREATE EMPLOYEE, TASK, PROJECT, OVERRIDE, ETC.) -->
+  <!-- ========================================================================= -->
+
+  <!-- Modal: Add Employee Form -->
+  <div id="modal-create-employee" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-darkCard border border-darkBorder rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-white font-outfit">Provision New Employee Account</h3>
+        <button class="modal-close-btn text-slate-400 hover:text-white">&times;</button>
+      </div>
+      <form id="form-create-employee" class="space-y-3 text-xs font-mono">
+        <div>
+          <label class="block text-slate-400 mb-1">Full Name *</label>
+          <input type="text" id="emp-in-name" required placeholder="e.g. Rahul Sharma" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Username *</label>
+            <input type="text" id="emp-in-user" required placeholder="rahul01" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Employee ID</label>
+            <input type="text" id="emp-in-code" placeholder="EMP-009" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Role *</label>
+            <select id="emp-in-role-select" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <option value="Employee">Employee</option>
+              <option value="Manager">Manager</option>
+              <option value="Intern">Intern</option>
+              <option value="CEO">CEO</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Department</label>
+            <select id="emp-in-dept-select" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <option value="Software Development">Software Development</option>
+              <option value="AI & Machine Learning">AI & Machine Learning</option>
+              <option value="UI/UX & Design">UI/UX & Design</option>
+              <option value="Cloud Infrastructure & DevOps">Cloud & DevOps</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Designation</label>
+            <input type="text" id="emp-in-desig" placeholder="Senior Developer" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Monthly Salary (INR)</label>
+            <input type="number" id="emp-in-sal" value="75000" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl mt-2">Provision &amp; Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: CEO Task Master Override -->
+  <div id="modal-ceo-task-override" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-darkCard border border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-amber-400 font-outfit">CEO Task Master Override</h3>
+        <button class="modal-close-btn text-slate-400 hover:text-white">&times;</button>
+      </div>
+      <p class="text-xs text-slate-300">As CEO, you have executive override authority to reassign, change status, priority, or deadline. This override will be logged in the immutable audit trail.</p>
+      
+      <form id="form-ceo-task-override" class="space-y-3 text-xs font-mono">
+        <input type="hidden" id="override-task-id">
+        <div>
+          <label class="block text-slate-400 mb-1">Reassign To Staff Member</label>
+          <select id="override-assignee-select" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">New Status</label>
+            <select id="override-status-select" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Approved">Approved</option>
+              <option value="Completed">Completed</option>
+              <option value="Changes Requested">Changes Requested</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Priority</label>
+            <select id="override-priority-select" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">New Deadline</label>
+          <input type="date" id="override-deadline-input" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Mandatory Override Reason *</label>
+          <input type="text" id="override-reason-input" required placeholder="e.g. Resource reallocation for Q3 sprint release" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl mt-2">Execute CEO Override &amp; Log</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create Task -->
+  <div id="modal-create-task" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-darkCard border border-darkBorder rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-white font-outfit">Assign New Technical Task</h3>
+        <button class="modal-close-btn text-slate-400 hover:text-white">&times;</button>
+      </div>
+      <form id="form-create-task" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Task Title *</label>
+          <input type="text" id="task-in-title" required placeholder="e.g. Implement WebSocket market feed" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Project</label>
+            <select id="task-in-project" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Assignee *</label>
+            <select id="task-in-assignee" required class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-400 mb-1">Priority</label>
+            <select id="task-in-priority" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Deadline *</label>
+            <input type="date" id="task-in-deadline" required class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Technical Requirements &amp; Scope</label>
+          <textarea id="task-in-desc" rows="3" placeholder="Provide implementation requirements, PR criteria, or Figma references..." class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white"></textarea>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl mt-2">Assign Task &rarr;</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Compose Internal Mail -->
+  <div id="modal-compose-mail" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-darkCard border border-darkBorder rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-white font-outfit">Compose Confidential Internal Mail</h3>
+        <button class="modal-close-btn text-slate-400 hover:text-white">&times;</button>
+      </div>
+      <form id="form-compose-mail" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Recipient Username / Identity *</label>
+          <input type="text" id="mail-to" required placeholder="manager01 or employee01" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Subject *</label>
+          <input type="text" id="mail-subject" required placeholder="Sprint Review & Milestone Target" class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Message Body *</label>
+          <textarea id="mail-body" rows="5" required placeholder="Type confidential corporate message..." class="w-full px-3 py-2 bg-darkSurface border border-darkBorder rounded-xl text-white"></textarea>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl mt-2">Dispatch Mail &rarr;</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Global Omnibar Search (Ctrl + K) -->
+  <div id="modal-search" class="fixed inset-0 bg-black/70 z-50 hidden flex items-start justify-center pt-20 p-4">
+    <div class="bg-darkCard border border-darkBorder rounded-2xl max-w-xl w-full p-4 space-y-3 shadow-2xl">
+      <div class="flex items-center gap-2 px-2 border-b border-darkBorder pb-3">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" id="omni-search-input" placeholder="Search staff, EMP codes, projects, tasks, invoices, clients..." class="w-full bg-transparent text-white text-sm focus:outline-none font-mono">
+        <kbd class="px-2 py-0.5 rounded bg-darkSurface text-slate-400 text-[10px] font-mono">ESC</kbd>
+      </div>
+      <div id="omni-search-results" class="space-y-1.5 max-h-80 overflow-y-auto pr-1 text-xs">
+        <div class="text-slate-500 text-center py-6">Type to query the workspace registry...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Workspace Main Controller Script -->
+  <script src="workspace.js"></script>
+</body>
+</html>

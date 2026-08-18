@@ -2,14 +2,13 @@ const CACHE_NAME = 'kapate-pwa-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/erp.html',
+  '/workspace.html',
+  '/workspace.css',
+  '/workspace.js',
   '/legal.html',
   '/flyers.html',
-  '/admin.html',
   '/style.css',
   '/app.js',
-  '/erp.js',
-  '/admin.js',
   '/manifest.json',
   '/assets/Kapate-Consultancy-Logo.png',
   '/assets/Shon-CEO.png'

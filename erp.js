@@ -462,23 +462,59 @@ function initNavigation() {
 
             const targetTab = btn.getAttribute('data-tab');
 
+            // Highlight active nav button
             navButtons.forEach(b => b.classList.remove('bg-accentBlue', 'text-white', 'shadow-md', 'shadow-accentBlue/20'));
-            views.forEach(v => v.classList.add('hidden'));
-
             btn.classList.add('bg-accentBlue', 'text-white', 'shadow-md', 'shadow-accentBlue/20');
-            document.getElementById(targetTab).classList.remove('hidden');
+
+            // Show/hide tabs using inline style (more reliable than Tailwind hidden with CDN)
+            views.forEach(v => v.style.display = 'none');
+            const target = document.getElementById(targetTab);
+            if (target) target.style.display = 'block';
 
             const titleMap = {
-                'tab-dashboard': 'Executive Control Dashboard',
-                'tab-employees': 'Corporate Staff Directory',
-                'tab-payroll': 'Salary Disbursements Ledger',
-                'tab-attendance': 'Duty Attendance Logs',
-                'tab-leaves': 'Leave Applications Portal',
-                'tab-tasks': 'Developer Kanban Taskboard',
+                'tab-dashboard':    'Executive Control Dashboard',
+                'tab-employees':    'Corporate Staff Directory',
+                'tab-payroll':      'Salary Disbursements Ledger',
+                'tab-attendance':   'Duty Attendance Logs',
+                'tab-leaves':       'Leave Applications Portal',
+                'tab-tasks':        'Developer Kanban Taskboard',
                 'tab-recruitments': 'HR Recruitment Funnel',
-                'tab-finance': 'Corporate Finance Ledger'
+                'tab-finance':      'Corporate Finance Ledger',
+                'tab-work-tokens':  'Work Tokens (KC-WT)',
+                'tab-github-repos': 'GitHub Repositories',
+                'tab-clients':      'Clients CRM',
+                'tab-invoices':     'Invoices & Proposals',
+                'tab-projects':     'Consulting Projects',
+                'tab-timesheets':   'Billable Timesheets',
+                'tab-inquiries':    'Client Inquiries',
+                'tab-approvals':    'Universal Approval Inbox',
+                'tab-audit-logs':   'System Audit Logs',
+                'tab-executive':    'Executive Dashboard'
             };
             headerTitle.textContent = titleMap[targetTab] || 'ERP Center';
+
+            // Refresh data when switching to a tab so it's always up-to-date
+            const tabRefreshMap = {
+                'tab-work-tokens':  fetchWorkTokens,
+                'tab-employees':    fetchEmployees,
+                'tab-payroll':      fetchPayroll,
+                'tab-attendance':   fetchAttendance,
+                'tab-leaves':       fetchLeaves,
+                'tab-tasks':        fetchTasks,
+                'tab-clients':      fetchClients,
+                'tab-invoices':     fetchInvoices,
+                'tab-projects':     fetchProjects,
+                'tab-timesheets':   fetchTimesheets,
+                'tab-inquiries':    fetchInquiries,
+                'tab-approvals':    fetchApprovals,
+                'tab-audit-logs':   fetchAuditLogs,
+                'tab-github-repos': fetchGitHubRepos,
+                'tab-finance':      fetchFinance,
+                'tab-recruitments': fetchRecruitments
+            };
+            if (tabRefreshMap[targetTab]) {
+                tabRefreshMap[targetTab]();
+            }
         });
     });
 }

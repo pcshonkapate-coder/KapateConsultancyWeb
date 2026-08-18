@@ -1,107 +1,118 @@
-# Kapate Consultancy & Enterprise ERP Platform
+# Kapate Consultancy & Enterprise Workspace Platform
 
-A web platform and internal ERP / HRMS system built for Kapate Consultancy (Pune, India).
-
-## 🚀 Features
-
-- **Public Web Portal**:
-  - Interactive hero canvas with particle physics animations.
-  - Public service offerings, leadership profiles, portfolio showcases, and client reviews.
-  - Interactive Contact Inquiry form connected to SQLite database with email confirmation dispatches.
-  - Legal & Compliance pages (`legal.html`) for Privacy Policy and Terms of Service.
-  - Pill-shaped frosted glass header with light/dark theme switcher.
-
-- **Corporate ERP & HRMS Portal (`/erp.html`)**:
-  - Split-screen modern login & registration system.
-  - Multi-Factor Authentication (MFA) via 6-digit email OTPs.
-  - Executive Control Dashboard & Staff Directory.
-  - Printable Salary Slips with full earnings/deductions breakdown (`window.print` PDF engine).
-  - Leave Application & HR Moderation approval workflow.
-  - Live Attendance Duty Clock-In tracker.
-  - Task Kanban board & Recruitment funnel management.
+A comprehensive company operating platform and modern public web portal built for **Kapate Consultancy** (Pune, India).
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Frontend**: HTML5, Vanilla JavaScript (ES6+), Vanilla CSS3, Tailwind CSS (via CDN for ERP UI), Chart.js
-- **Backend**: Python 3 (Flask), SQLite3
-- **MFA & Messaging**: Google SMTP (`smtplib`), Twilio API Integration
-- **Server Deployment**: Gunicorn
-
----
-
-## ⚙️ Project Structure
+## 🏛️ Platform Architecture
 
 ```text
-Info-Kapate/
-├── server.py              # Main Flask application backend & API endpoints
-├── reset_db.py            # Utility script to re-initialize clean database tables
-├── config.json            # Configuration settings (SMTP, passwords, API keys)
-├── requirements.txt      # Python dependencies for deployment
-├── Procfile               # Web process runner configuration
-├── .gitignore             # Ignored files for git security
-│
-├── index.html             # Public consultancy landing page
-├── legal.html             # Privacy policy & terms of service page
-├── erp.html               # Corporate ERP & HRMS portal interface
-├── admin.html             # Legacy admin view
-├── letterhead.html        # Official company letterhead template
-│
-├── style.css              # Custom CSS design system
-├── app.js                 # Public website interactive scripts & particle engine
-├── erp.js                 # ERP portal client logic & SPA navigation
-│
-├── assets/                # Media assets (CEO photo & brand logos)
-└── scripts/               # Utility & database scripts (reset_db.py)
+                    KAPATE CONSULTANCY
+                           │
+                 ┌─────────┴─────────┐
+                 │                   │
+            PUBLIC WEBSITE       WORKSPACE
+         (kapateconsultancy.in)  (/workspace)
+                                     │
+                  ┌──────────────────┼─────────────────┐
+                  │                  │                 │
+                PEOPLE             WORK            BUSINESS
+                  │                  │                 │
+             Employees          Projects             CRM
+             Managers           Tasks                Clients
+             Interns            Milestones           Proposals
+             Attendance         Files                Invoices
+             Leave              Calendar             Finance
+                  │                  │                 │
+                  └──────────────────┼─────────────────┘
+                                     │
+                              COMMUNICATION
+                                     │
+                             Mail + Chat
+                                     │
+                              NOTIFICATIONS
+                                     │
+                               ANALYTICS
+                                     │
+                                KAPATE AI
 ```
+
+---
+
+## 🚀 Key Features
+
+### 1. Public Web Portal (`/` & `/index.html`)
+- Interactive hero canvas with particle physics animations.
+- Public IT services, architecture solutions, client reviews, price estimator, and interactive contact inquiry dispatch.
+- Compliance & legal agreements (`/legal.html`).
+
+### 2. Kapate Enterprise Workspace (`/workspace` & `/workspace.html`)
+- **4-Tier Role-Based Access Control (RBAC)**:
+  - **CEO**: Full company oversight, financial ledger, revenue analytics, staff registration, company health gauges, and audit logs.
+  - **Manager**: Project milestones, team task assignment, submission review workflow (Approve / Request Changes), workload balancer, and meetings.
+  - **Employee**: "What do I need to do today?" priority backlog, stopwatch time tracker, task stepper & deliverable submitter, internal mail & chat.
+  - **Intern**: Curriculum learning modules (8/10 completed), practical project tracks, mentor feedback, and certificate milestones.
+
+- **Integrated Functional Modules**:
+  1. **Dashboard** (Role-tailored KPIs, revenue, backlog, and broadcasts)
+  2. **Projects** (SLA timelines, milestones, budgets, and team allocations)
+  3. **Tasks** (Strict status stepper: `Assigned` &rarr; `In Progress` &rarr; `Submitted` &rarr; `Approved` &rarr; `Completed`)
+  4. **Task Discussions** (Comment threads, mentions, and file attachments)
+  5. **Internal Mail** (Confidential in-app messaging: Inbox, Sent, Starred, Trash, Compose)
+  6. **Real-Time Chat** (Channels `#general`, `#engineering`, `#ai-lab` & 1-on-1 direct messaging)
+  7. **Company File Vault** (Hierarchical drive: HR, Finance, Projects, Templates, Internal with RBAC permissions)
+  8. **Client CRM** (Accounts pipeline: Lead, Contacted, Proposal Sent, Active, Inactive)
+  9. **Proposal Generator** (Commercial drafting with branded PDF export)
+  10. **Invoices & Billing** (Itemized billing, tax calculation, payment status tracking)
+  11. **Duty Attendance Clock** (Live shift timer, clock in/out, duty logs)
+  12. **Leave Management** (Application, categories, Manager/CEO approval/rejection moderation)
+  13. **Unified Calendar** (Deadlines, milestones, meetings, leaves, company townhalls)
+  14. **Time Tracking & Timesheets** (Stopwatch timer widget and weekly effort breakdown)
+  15. **Employee Performance** (Deliverable ratings, on-time scores, qualitative reviews)
+  16. **Internship Hub** (Curriculum tracks, practical module scores, and completion certificates)
+  17. **Announcements Noticeboard** (Company-wide and department broadcasts)
+  18. **Audit Logs & Security** (Immutable activity trail with user, IP, action, entity, timestamp)
+  19. **Kapate AI Assistant** (Permission-governed natural language workspace copilot)
+  20. **Global Omnibar Search** (`Ctrl+K` omnibar searching across tasks, projects, staff, files)
+
+---
+
+## 🔑 Pre-Seeded Demo Accounts
+
+| Role | Username / Identity | Password | Name | Department |
+| :--- | :--- | :--- | :--- | :--- |
+| **CEO** | `ceo` | `Kapate@Ceo2026` | Shon Kapate | Executive |
+| **Manager** | `manager01` | `Manager@2026` | Rohit Verma | Engineering |
+| **Manager** | `manager02` | `Manager@2026` | Ananya Deshmukh | Product & AI |
+| **Employee** | `employee01` | `Emp@2026` | Siddharth Patil | Engineering |
+| **Employee** | `employee02` | `Emp@2026` | Pooja Kulkarni | Design |
+| **Employee** | `employee03` | `Emp@2026` | Aditya Shinde | Cloud & DevOps |
+| **Intern** | `intern01` | `Intern@2026` | Tanvi Joshi | Engineering |
+| **Intern** | `intern02` | `Intern@2026` | Gaurav More | Product & AI |
+
+---
+
+## ⚙️ Technology Stack
+
+- **Frontend**: HTML5, Vanilla JavaScript (ES6+), Vanilla CSS3, Tailwind CSS (via CDN), Chart.js
+- **Backend**: Python 3 (Flask), SQLite3
+- **Security**: PBKDF2 Password Hashing (`werkzeug.security`), Session Tokens, Granular RBAC Middleware
+- **Deployment**: Gunicorn, Vercel (`vercel.json`), Netlify (`netlify.toml`), Render (`render.yaml`)
 
 ---
 
 ## 💻 Local Development Setup
 
-1. **Install Python dependencies**:
+1. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Configure environment settings (`config.json`)**:
-   Ensure `SMTP_EMAIL` and `SMTP_PASSWORD` are configured for email dispatches.
-
-3. **Start the Flask Development Server**:
+2. **Start the Server**:
    ```bash
    python server.py
    ```
 
-4. **Access the application**:
-   - Main Website: [http://127.0.0.1:8080](http://127.0.0.1:8080)
-   - ERP Portal: [http://127.0.0.1:8080/erp.html](http://127.0.0.1:8080/erp.html)
-
----
-
-## ☁️ Deployment Instructions
-
-### Deploy to Render / Railway / Heroku
-
-1. Push your repository to GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit for deployment"
-   git branch -M main
-   git remote add origin <your-github-repo-url>
-   git push -u origin main
-   ```
-
-2. Log into **Render** or **Railway**, create a new Web Service, and select your GitHub repository.
-3. The platform will automatically detect `requirements.txt` and `Procfile` and start your application using Gunicorn.
-
-### Deploy to Netlify (Drag & Drop or Git)
-
-1. **Option A (Drag & Drop)**:
-   - Log into **[Netlify.com](https://app.netlify.com/drop)**.
-   - Drag and drop your project folder `Info-Kapate` directly into the Netlify upload zone.
-2. **Option B (GitHub Integration)**:
-   - Connect your GitHub repository to Netlify.
-   - Set publish directory to `.` (root).
-   - Netlify will read `netlify.toml` and deploy instantly!
+3. **Access the Applications**:
+   - Public Website: [http://localhost:8080](http://localhost:8080)
+   - Kapate Workspace: [http://localhost:8080/workspace](http://localhost:8080/workspace)
